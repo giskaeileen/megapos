@@ -1,0 +1,4 @@
+.align-start-table td {
+  text-align: left !important; /* Untuk teks */
+  vertical-align: top !important; /* Untuk mengatur posisi vertikal */
+}
