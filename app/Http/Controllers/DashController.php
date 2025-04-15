@@ -12,22 +12,33 @@ use Illuminate\Http\Request;
 
 class DashController extends Controller
 {
-    //
-    public function onwerDash(Request $request){
+    /**
+     * Dashboard untuk pemilik toko
+     */
+    public function onwerDash(Request $request)
+    {
+        // Ambil user yang sedang login
         $user = $request->user();
 
+        // Ambil semua ID toko yang dimiliki oleh user
         $storeIds = $user->stores->pluck('id');
 
+        // Hitung total karyawan dari semua toko
         $totalEmployees = Employee::whereIn('store_id', $storeIds)->count();
-        $totalOrder= Order::whereIn('store_id', $storeIds)->count();
+
+        // Hitung total pesanan dari semua toko
+        $totalOrder = Order::whereIn('store_id', $storeIds)->count();
+
+        // Hitung total pembayaran dari semua toko
         $totalPayment = Order::whereIn('store_id', $storeIds)->sum('total');
 
+        // Return data dashboard
         return response()->json([
             'id' => $user->id,
             'name' => $user->name,
             'email' => $user->email,
             'multi_store' => $user->multi_store,
-            'roles' => $user->getRoleNames(), 
+            'roles' => $user->getRoleNames(),
             'permissions' => $user->getAllPermissions()->pluck('name'),
             'stores' => $user->stores,
             'total_stores' => $user->stores->count(),
@@ -37,24 +48,34 @@ class DashController extends Controller
         ]);
     }
 
+    /**
+     * Menampilkan daftar pesanan yang sudah selesai
+     */
     public function orders(Request $request)
     {
+        // Ambil jumlah baris per halaman
         $row = (int) $request->input('row', 10);
 
+        // Validasi jumlah row
         if ($row < 1 || $row > 100) {
             abort(400, 'The per-page parameter must be an integer between 1 and 100.');
         }
 
+        // Ambil user dan ID tokonya
         $user = $request->user();
         $storeIds = $user->stores->pluck('id');
 
-        $orders = Order::whereIn('store_id', $storeIds) 
+        // Ambil pesanan selesai dari toko yang dimiliki user
+        $orders = Order::whereIn('store_id', $storeIds)
             ->where('order_status', 'complete')
             ->paginate($row);
 
         return response()->json($orders);
     }
 
+    /**
+     * Menampilkan produk terlaris
+     */
     public function topProducts(Request $request)
     {
         $row = (int) request('row', 10);
@@ -66,7 +87,7 @@ class DashController extends Controller
         $user = $request->user();
         $storeIds = $user->stores->pluck('id');
 
-        // Ambil data pesanan dengan produk terkait
+        // Ambil pesanan yang sudah lengkap, termasuk produk dan relasi lainnya
         $orders = Order::with([
                 'products.product.category',
                 'products.product.supplier'
@@ -75,15 +96,13 @@ class DashController extends Controller
             ->whereIn('store_id', $storeIds)
             ->get();
 
-        // Menghitung total quantity dari setiap produk yang terjual
+        // Hitung total produk terjual
         $products = [];
 
         foreach ($orders as $order) {
             foreach ($order->products as $orderProduct) {
                 $productId = $orderProduct->product_id;
                 $product = $orderProduct->product;
-
-                // return response()->json($product);
 
                 if (!isset($products[$productId])) {
                     $products[$productId] = [
@@ -106,20 +125,20 @@ class DashController extends Controller
             }
         }
 
-        // Ubah ke collection
+        // Ubah menjadi collection
         $sortedProducts = collect($products);
 
-        // **Sorting berdasarkan request**
-        $sortBy = request('sort_by', 'total_sold'); // Default sorting by `total_sold`
-        $sortOrder = request('order', 'desc'); // Default descending
+        // Sorting berdasarkan parameter `sort_by` dan `order`
+        $sortBy = request('sort_by', 'total_sold'); // Default sort: total_sold
+        $sortOrder = request('order', 'desc');      // Default order: descending
 
         if (in_array($sortBy, ['product_name', 'total_sold'])) {
-            $sortedProducts = $sortOrder === 'desc' 
-                ? $sortedProducts->sortByDesc($sortBy) 
+            $sortedProducts = $sortOrder === 'desc'
+                ? $sortedProducts->sortByDesc($sortBy)
                 : $sortedProducts->sortBy($sortBy);
         }
 
-        // **Pagination hasil produk**
+        // Paginasi manual
         $perPage = (int) request('per_page', 10);
         $page = (int) request('page', 1);
         $paginatedProducts = $sortedProducts->forPage($page, $perPage)->values();
@@ -133,6 +152,9 @@ class DashController extends Controller
         ]);
     }
 
+    /**
+     * Dashboard untuk admin
+     */
     public function adminDash()
     {
         $row = (int) request('row', 10);
@@ -141,20 +163,15 @@ class DashController extends Controller
             abort(400, 'The per-page parameter must be an integer between 1 and 100.');
         }
 
+        // Ambil pendaftaran toko dengan sortable dan pagination
         $store_registration = StoreRegistration::sortable()
-                ->paginate($row)
-                ->appends(request()->query());
+            ->paginate($row)
+            ->appends(request()->query());
 
+        // Hitung semua total yang dibutuhkan
         $store_registration_total = StoreRegistration::count();
-
-        $store_registration_pending = StoreRegistration::
-                where('status', 'pending')
-                ->count();
-
-        $store_registration_approved = StoreRegistration::
-                where('status', 'approved')
-                ->count();
-
+        $store_registration_pending = StoreRegistration::where('status', 'pending')->count();
+        $store_registration_approved = StoreRegistration::where('status', 'approved')->count();
         $store_total = Store::count();
 
         return response()->json([
@@ -163,10 +180,6 @@ class DashController extends Controller
             'store_registration_pending_total' => $store_registration_pending,
             'store_registration_approved_total' => $store_registration_approved,
             'store_total' => $store_total,
-            ]
-        );
+        ]);
     }
-
-
 }
-

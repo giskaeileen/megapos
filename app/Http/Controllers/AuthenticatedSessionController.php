@@ -43,7 +43,6 @@ class AuthenticatedSessionController extends Controller
     // public function store(Request $request)
     // {
     //     // // Validasi input
-    //     // // $credentials = $request->validate([
     //     // $validator = Validator::make($request->all(), [
     //     //     'email' => ['required', 'email'],
     //     //     'password' => ['required'],
@@ -100,9 +99,6 @@ class AuthenticatedSessionController extends Controller
     //         // Generate token untuk user yang berhasil login
     //         $token = $user->createToken('auth_token')->plainTextToken;
 
-    //         // Simpan token di cookies
-    //         // $cookieToken = cookie('auth_token', $token, 60 * 24); // Token disimpan selama 1 hari
-
     //         // Simpan token dan data user di cookies
     //         // $cookieToken = cookie('auth_token', $token, 60 * 24); // Berlaku selama 1 hari
     //         // $cookieUserName = cookie('user_name', $user->name, 60 * 24); // Berlaku selama 1 hari
@@ -115,34 +111,32 @@ class AuthenticatedSessionController extends Controller
     //             'user' => $user,
     //             'token' => $token
     //         ]);
-    //         // ])->withCookie($cookieToken);
-    //         // ])->withCookie($cookieToken)
+    //         // ->withCookie($cookieToken)
     //         // ->withCookie($cookieUserName)
     //         // ->withCookie($cookieUserUsername)
     //         // ->withCookie($cookieUserEmail);
     //     }
 
-    //     // Kembalikan respons dengan cookies
+    //     // Kembalikan respons dengan cookies (versi lain)
     //     // return response()->json([
     //     //     'message' => 'Login successful',
     //     //     // 'user' => $user,
     //     // ]);
-    //     // ])->withCookie($cookieToken)
-    //     //   ->withCookie($cookieUser);
+    //     // ->withCookie($cookieToken)
+    //     // ->withCookie($cookieUser);
     // }
 
+    // Versi akhir fungsi store
     public function store(Request $request)
     {
-        // Validasi request login
+        // Validasi request login, bisa menggunakan email atau username
         $validator = Validator::make($request->all(), [
-            // 'email' => ['required', 'string', 'email', 'max:255'],
-            // 'password' => ['required', 'string'],
-            'email' => ['required_without:username', 'string', 'email', 'exists:users,email'],
-            'username' => ['required_without:email', 'string', 'alpha_dash:ascii', 'exists:users,username'],
-            'password' => ['required', 'string'],
+            'email' => ['required_without:username', 'string', 'email', 'exists:users,email'], // wajib jika username tidak diisi
+            'username' => ['required_without:email', 'string', 'alpha_dash:ascii', 'exists:users,username'], // wajib jika email tidak diisi
+            'password' => ['required', 'string'], // password wajib
         ]);
 
-        // Jika validasi gagal, kembalikan error
+        // Jika validasi gagal, bisa kembalikan response error (opsional)
         // if ($validator->fails()) {
         //     return response()->json([
         //         'message' => 'Validation error',
@@ -150,9 +144,8 @@ class AuthenticatedSessionController extends Controller
         //     ], 422);
         // }
 
-        // Login dengan email atau username
+        // Ambil kredensial berdasarkan input
         $credentials = $request->only('email', 'password');
-
         if ($request->has('username')) {
             $credentials = [
                 'username' => $request->username,
@@ -160,57 +153,58 @@ class AuthenticatedSessionController extends Controller
             ];
         }
 
-        // Cek kredensial dan login
+        // Coba autentikasi user
         if (!Auth::attempt($credentials)) {
             return response()->json([
                 'message' => 'Invalid credentials'
             ], 401);
         }
 
-        // Cek kredensial dan login
-        // if (Auth::attempt(['email' => $request->email, 'password' => $request->password])) {
         // Ambil user yang sedang login
         $user = Auth::user();
 
-        // Generate token untuk user yang berhasil login
+        // Buat token autentikasi
         $token = $user->createToken('auth_token')->plainTextToken;
 
+        // Ambil data employee jika ada
         $employee = Employee::where('user_id', $user->id)->first();
 
+        // Persiapkan data user yang akan dikembalikan
         $user = [
             'id' => $user->id,
             'name' => $user->name,
             'email' => $user->email,
             'photo' => $user->photo,
             'store_id' => isset($employee) ? $employee->store_id : null,
-            'roles' => $user->getRoleNames(), // Mengambil daftar peran
-            'permissions' => $user->getAllPermissions()->pluck('name'), // Mengambil daftar nama izin
-            'stores' => $user->stores,
+            'roles' => $user->getRoleNames(), // ambil semua peran user
+            'permissions' => $user->getAllPermissions()->pluck('name'), // ambil semua izin user
+            'stores' => $user->stores, // daftar toko user
         ];
 
+        // Jika employee punya store yang belum ada di daftar user stores, tambahkan
         if (isset($employee) && $employee->store) {
             if (!$user['stores']->contains($employee->store)) {
                 $user['stores']->push($employee->store);
             }
         }
 
-        // Kembalikan response dengan data user dan token
+        // Kembalikan response JSON dengan user dan token
         return response()->json([
             'message' => 'Login successful',
             'user' => $user,
             'token' => $token
         ]);
-        // }
     }
 
-
+    // Fungsi logout / destroy token user
     public function destroy(Request $request)
     {
+        // Hapus token akses saat ini
         $request->user()->currentAccessToken()->delete();
 
+        // Kembalikan pesan logout berhasil
         return response()->json([
             'message' => 'Logout successful'
         ]);
     }
-
 }
