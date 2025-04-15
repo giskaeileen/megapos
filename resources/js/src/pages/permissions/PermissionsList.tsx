@@ -13,26 +13,31 @@ import { useDeletePermissionsMutation, useGetPermissionsQuery } from '../../redu
 import { deleteConfirmation } from '../../components/tools';
 
 const PermissionsList= () => {
+    // Ambil path URL untuk menentukan entity yang sedang diakses
     const location = useLocation();
     const pathnames = location.pathname.split('/').filter((x) => x);
-    const entity = pathnames[0];
+    const entity = pathnames[0]; // Nama entity dari URL
     const entityCols = `${pathnames[0]}_cols`; 
     const entityPage = `${pathnames[0]}_page`; 
     const entitySort = `${pathnames[0]}_sort`; 
 
+    // State untuk pagination, dengan nilai awal dari localStorage
     const [page, setPage] = useState<number>(() => {
         const storedPage = localStorage.getItem(entityPage);
         return storedPage ? parseInt(storedPage, 10) : 1; // Konversi ke number, default ke 1
     });
+    // State untuk pencarian, juga dari localStorage
     const [search, setSearch] = useState(() => {
         return localStorage.getItem(`${entity}_search`) || '';
     });
+    // State untuk status sort
     const [sortStatus, setSortStatus] = useState<DataTableSortStatus>(() => {
         const storedSort = localStorage.getItem(`${entitySort}`);
         return storedSort
             ? JSON.parse(storedSort) 
             : { columnAccessor: 'created_at', direction: 'desc' }; 
     });
+    // Ambil data permission dari API
     const { data, refetch } = useGetPermissionsQuery(
         { 
             page, 
@@ -45,13 +50,14 @@ const PermissionsList= () => {
     const dispatch = useDispatch();
     const [items, setItems] = useState<any[]>([]);
     const [total, setTotal] = useState();
-    const [deletePermissions] = useDeletePermissionsMutation();
-    const [hideCols, setHideCols] = useState<string[]>([]);
+    const [deletePermissions] = useDeletePermissionsMutation(); // Hook delete data dari API
+    const [hideCols, setHideCols] = useState<string[]>([]); // Kolom tersembunyi
 
     /*****************************
      * search 
      */
 
+    // Simpan pencarian ke localStorage
     useEffect(() => {
         localStorage.setItem(`${entity}_search`, search);
     }, [search]);
@@ -60,6 +66,7 @@ const PermissionsList= () => {
      * sort 
      */
 
+    // Simpan ke localStorage
     useEffect(() => {
         localStorage.setItem(`${entitySort}`, JSON.stringify(sortStatus));
     }, [sortStatus]);
@@ -75,6 +82,7 @@ const PermissionsList= () => {
      * delete 
      */
 
+    // Hapus data
     const deleteRow = () => {
         deleteConfirmation(selectedRecords, deletePermissions, refetch);
     };
@@ -83,13 +91,14 @@ const PermissionsList= () => {
      * page 
      */
 
-    const [pageSize, setPageSize] = useState(10);
+    // Pagination
+    const [pageSize, setPageSize] = useState(10); // Jumlah per halaman
     const [initialRecords, setInitialRecords] = useState<any[]>([]);
     useEffect(() => {
         setInitialRecords(items)
     }, [items]);
-    const [records, setRecords] = useState(initialRecords);
-    const [selectedRecords, setSelectedRecords] = useState<any>([]);
+    const [records, setRecords] = useState(initialRecords); // Data yang ditampilkan
+    const [selectedRecords, setSelectedRecords] = useState<any>([]); // Data terpilih
 
     // Muat data awal dari localStorage saat komponen pertama kali dirender
     useEffect(() => {
@@ -177,12 +186,14 @@ const PermissionsList= () => {
      * tools 
      */
 
+    // Kapitalisasi huruf awal
     function capitalizeFirstLetter(str: string): string {
         return str.charAt(0).toUpperCase() + str.slice(1);
     }
 
     return (
         <div>
+            {/* Header dan button aksi */}
             <div className="flex items-center justify-between flex-wrap gap-4 mb-5">
                 <h2 className="text-xl">{capitalizeFirstLetter(entity)}</h2>
                 <div className="flex sm:flex-row flex-col sm:items-center sm:gap-3 gap-4 w-full sm:w-auto">
@@ -200,10 +211,13 @@ const PermissionsList= () => {
                     </div>
                 </div>
             </div>
+            {/* Tabel */}
             <div className="panel px-0 border-white-light dark:border-[#1b2e4b]">
                 <div className="invoice-table">
+                    {/* Pencarian dan dropdown kolom */}
                     <div className="mb-4.5 px-5 flex md:items-center md:flex-row flex-col gap-5">
                             <div className="flex md:items-center md:flex-row flex-col gap-5">
+                                {/* Dropdown toggle kolom */}
                                 <div className="dropdown">
                                     <Dropdown
                                         placement={`${isRtl ? 'bottom-end' : 'bottom-start'}`}
@@ -248,11 +262,13 @@ const PermissionsList= () => {
                                 </div>
                             </div>
 
+                        {/* Search input */}
                         <div className="ltr:ml-auto rtl:mr-auto">
                             <input type="text" className="form-input w-auto" placeholder="Search..." value={search} onChange={(e) => setSearch(e.target.value)} />
                         </div>
                     </div>
 
+                    {/* Tabel dengan pagination */}
                     <div className="datatables pagination-padding">
                         <DataTable
                             className="whitespace-nowrap table-hover invoice-table"
@@ -287,16 +303,16 @@ const PermissionsList= () => {
                                     hidden: hideCols.includes('created_at'),
                                 },
                             ]}
-                            highlightOnHover
-                            totalRecords={total}
-                            recordsPerPage={pageSize}
-                            page={page}
-                            onPageChange={(p) => setPage(p)}
-                            sortStatus={sortStatus}
-                            onSortStatusChange={setSortStatus}
-                            selectedRecords={selectedRecords}
-                            onSelectedRecordsChange={setSelectedRecords}
-                            paginationText={({ from, to, totalRecords }) => `Showing  ${from} to ${to} of ${totalRecords} entries`}
+                            highlightOnHover // Efek hover saat mouse di atas baris
+                            totalRecords={total} // Total jumlah data
+                            recordsPerPage={pageSize} // jumlah data per halaman
+                            page={page} // halaman saat ini
+                            onPageChange={(p) => setPage(p)} // update halaman ketika pindah
+                            sortStatus={sortStatus} // Status sorting saat ini
+                            onSortStatusChange={setSortStatus} // Fungsi untuk mengatur sorting
+                            selectedRecords={selectedRecords} // data yang dipilih (checkbox)
+                            onSelectedRecordsChange={setSelectedRecords} // update selected
+                            paginationText={({ from, to, totalRecords }) => `Showing  ${from} to ${to} of ${totalRecords} entries`} // teks pagination
                         />
                     </div>
                 </div>

@@ -13,25 +13,30 @@ import { useDeleteSuppliersMutation, useGetSuppliersQuery } from '../../redux/fe
 import { useGetPandingOrdersQuery } from '../../redux/features/orders/ordersApi';
 
 const PendingOrdersList= () => {
+    // entity localstorage
     const location = useLocation();
     const pathnames = location.pathname.split('/').filter((x) => x);
-    const entity = pathnames[0];
-    const entityCols = `${pathnames[0]}_cols`; 
-    const entityPage = `${pathnames[0]}_page`; 
-    const entitySort = `${pathnames[0]}_sort`; 
+    const entity = pathnames[0];  // Nama entitas (misal: 'orders')
+    const entityCols = `${pathnames[0]}_cols`; // Key untuk kolom tersembunyi di localStorage
+    const entityPage = `${pathnames[0]}_page`; // Key untuk halaman di localStorage
+    const entitySort = `${pathnames[0]}_sort`; // Key untuk sorting di localStorage
+    // State untuk halaman dengan default dari localStorage
     const [page, setPage] = useState<number>(() => {
         const storedPage = localStorage.getItem(entityPage);
         return storedPage ? parseInt(storedPage, 10) : 1; // Konversi ke number, default ke 1
     });
+    // State untuk pencarian dengan default dari localStorage
     const [search, setSearch] = useState(() => {
         return localStorage.getItem(`${entity}_search`) || '';
     });
+    // State untuk sorting dengan default dari localStorage atau default 'created_at'
     const [sortStatus, setSortStatus] = useState<DataTableSortStatus>(() => {
         const storedSort = localStorage.getItem(`${entitySort}`);
         return storedSort
             ? JSON.parse(storedSort) 
             : { columnAccessor: 'created_at', direction: 'desc' }; 
     });
+    // Query untuk mengambil data pending order dari API
     const { data, refetch } = useGetPandingOrdersQuery(
         { 
             page, 
@@ -42,15 +47,16 @@ const PendingOrdersList= () => {
         { refetchOnMountOrArgChange: true } 
     );
     const dispatch = useDispatch();
-    const [items, setItems] = useState<any[]>([]);
-    const [total, setTotal] = useState();
-    const [deleteSupplier] = useDeleteSuppliersMutation();
-    const [hideCols, setHideCols] = useState<string[]>([]);
+    const [items, setItems] = useState<any[]>([]); // Data utama
+    const [total, setTotal] = useState(); // Total data
+    const [deleteSupplier] = useDeleteSuppliersMutation(); // Fungsi hapus supplier
+    const [hideCols, setHideCols] = useState<string[]>([]); // Kolom tersembunyi
 
     /*****************************
      * search 
      */
 
+    // Simpan nilai pencarian ke localStorage
     useEffect(() => {
         localStorage.setItem(`${entity}_search`, search);
     }, [search]);
@@ -59,6 +65,7 @@ const PendingOrdersList= () => {
      * sort 
      */
 
+    // Simpan dan ambil sorting dari localStorage
     useEffect(() => {
         localStorage.setItem(`${entitySort}`, JSON.stringify(sortStatus));
     }, [sortStatus]);
@@ -74,17 +81,19 @@ const PendingOrdersList= () => {
      * delete 
      */
 
+    // Fungsi untuk menghapus data yang dipilih
     const deleteRow = async () => {
         if (!selectedRecords.length) {
+            // Alert saat tidak ada data yang dipilih
             Swal.fire({
                 icon: 'info',
                 title: 'No Selection',
                 text: 'Please select at least one record to delete.',
-                // customClass: 'sweet-alerts',
             });
             return;
         }
 
+        // Alert saat hapus data
         Swal.fire({
             icon: 'warning',
             title: 'Are you sure?',
@@ -93,7 +102,6 @@ const PendingOrdersList= () => {
             confirmButtonText: 'Delete',
             cancelButtonText: 'Cancel',
             padding: '2em',
-            // customClass: 'sweet-alerts',
         }).then(async (result) => {
             if (result.isConfirmed) {
                 try {
@@ -132,13 +140,15 @@ const PendingOrdersList= () => {
      * page 
      */
 
+    // State untuk pagination
     const [pageSize, setPageSize] = useState(10);
     const [initialRecords, setInitialRecords] = useState<any[]>([]);
+    // Set data awal saat items berubah
     useEffect(() => {
         setInitialRecords(items)
     }, [items]);
-    const [records, setRecords] = useState(initialRecords);
-    const [selectedRecords, setSelectedRecords] = useState<any>([]);
+    const [records, setRecords] = useState(initialRecords); // Data yang ditampilkan pada tabel
+    const [selectedRecords, setSelectedRecords] = useState<any>([]); // Data yang dipilih user
 
     // Muat data awal dari localStorage saat komponen pertama kali dirender
     useEffect(() => {
@@ -164,6 +174,7 @@ const PendingOrdersList= () => {
      * items 
      */
 
+    // Set data items setelah data API diterima
     useEffect(() => {
         if (data?.data) {
             const mappedItems = data.data.map((d: any, index: number) => ({
@@ -175,9 +186,6 @@ const PendingOrdersList= () => {
                 payment_status: d.payment_status,
                 total: d.total,
                 order_status: d.order_status,
-                // photo: d.photo 
-                //     ? `${import.meta.env.VITE_SERVER_URI_BASE}storage/${entity}/${d.photo}` 
-                //     : '/assets/images/blank_profile.png', 
                 created_at: new Intl.DateTimeFormat('id-ID', {
                     year: 'numeric',
                     month: '2-digit',
@@ -202,8 +210,10 @@ const PendingOrdersList= () => {
      * checkbox hide show
      */
 
+    // Arah layout RTL (kanan ke kiri)
     const isRtl = useSelector((state: IRootState) => state.themeConfig.rtlClass) === 'rtl' ? true : false;
 
+    // Kolom tabel
     const cols = [
         { accessor: 'no', title: 'No' },
         { accessor: 'invoice_no', title: 'Invoice No' },
@@ -239,17 +249,21 @@ const PendingOrdersList= () => {
      * tools 
      */
 
+    // Kapitalisasi huruf pertama
     function capitalizeFirstLetter(str: string): string {
         return str.charAt(0).toUpperCase() + str.slice(1);
     }
 
     return (
         <div>
+            {/* Header bagian atas yang berisi judul halaman dan button aksi */}
             <div className="flex items-center justify-between flex-wrap gap-4 mb-5">
                 <h2 className="text-xl">{capitalizeFirstLetter(entity)}</h2>
+                {/* button Aksi: Delete dan create */}
                 <div className="flex sm:flex-row flex-col sm:items-center sm:gap-3 gap-4 w-full sm:w-auto">
                     <div className="relative">
                         <div className="flex items-center gap-2">
+                            {/* button untuk menghapus data terpilih */}
                             <button type="button" className="btn btn-danger gap-2" onClick={() => deleteRow()}>
                                 <IconTrashLines />
                                 Delete
@@ -262,11 +276,14 @@ const PendingOrdersList= () => {
                     </div>
                 </div>
             </div>
+            {/* Panel tabel */}
             <div className="panel px-0 border-white-light dark:border-[#1b2e4b]">
                 <div className="invoice-table">
+                    {/* Bagian atas tabel filter kolom dan search */}
                     <div className="mb-4.5 px-5 flex md:items-center md:flex-row flex-col gap-5">
                             <div className="flex md:items-center md:flex-row flex-col gap-5">
                                 <div className="dropdown">
+                                    {/* Dropdown untuk menampilkan atau menyembunyikan kolom */}
                                     <Dropdown
                                         placement={`${isRtl ? 'bottom-end' : 'bottom-start'}`}
                                         btnClassName="!flex items-center border font-semibold border-white-light dark:border-[#253b5c] rounded-md px-4 py-2 text-sm dark:bg-[#1b2e4b] dark:text-white-dark"
@@ -278,6 +295,7 @@ const PendingOrdersList= () => {
                                         }
                                     >
                                         <ul className="!min-w-[140px]">
+                                            {/* Daftar kolom yang bisa di-hide/show */}
                                             {cols.map((col, i) => {
                                                 return (
                                                     <li
@@ -310,52 +328,22 @@ const PendingOrdersList= () => {
                                 </div>
                             </div>
 
+                        {/* Input untuk pencarian data */}
                         <div className="ltr:ml-auto rtl:mr-auto">
                             <input type="text" className="form-input w-auto" placeholder="Search..." value={search} onChange={(e) => setSearch(e.target.value)} />
                         </div>
                     </div>
 
+                    {/* DataTable dengan konfigurasi pagination, sorting, dan kolom */}
                     <div className="datatables pagination-padding">
                         <DataTable
                             className="whitespace-nowrap table-hover invoice-table"
-                            records={records}
+                            records={records} // data yang akan ditampilkan
                             columns={[
                                 {
                                     accessor: 'no',
-                                    // sortable: true,
-                                    hidden: hideCols.includes('no'),
+                                    hidden: hideCols.includes('no'), // cek apakah kolom disembunyikan
                                 },
-                                // {
-                                //     accessor: 'name',
-                                //     sortable: true,
-                                //     hidden: hideCols.includes('name'),
-                                //     render: ({ name, id, photo}) => {
-                                //         return (
-                                //             <div className="flex items-center font-semibold">
-                                //                 <div className="p-0.5 bg-white-dark/30 rounded-full w-max ltr:mr-2 rtl:ml-2">
-                                //                     <img
-                                //                         className="h-8 w-8 rounded-full object-cover"
-                                //                         src={photo}
-                                //                         alt={name || 'Profile'}
-                                //                     />
-                                //                 </div>
-                                //                 <div>
-                                //                     <a
-                                //                         href={`/${entity}/${id}`}
-                                //                         className="hover:underline"
-                                //                     >
-                                //                         {name}
-                                //                     </a>
-                                //                 </div>
-                                //             </div>
-                                //         );
-                                //     },
-                                // },
-                                // {
-                                //     accessor: 'invoice_no',
-                                //     sortable: true,
-                                //     hidden: hideCols.includes('invoice_no'),
-                                // },
                                 {
                                     accessor: 'invoice_no',
                                     sortable: true,
@@ -404,16 +392,16 @@ const PendingOrdersList= () => {
                                     hidden: hideCols.includes('created_at'),
                                 },
                             ]}
-                            highlightOnHover
-                            totalRecords={total}
-                            recordsPerPage={pageSize}
-                            page={page}
-                            onPageChange={(p) => setPage(p)}
-                            sortStatus={sortStatus}
-                            onSortStatusChange={setSortStatus}
-                            selectedRecords={selectedRecords}
-                            onSelectedRecordsChange={setSelectedRecords}
-                            paginationText={({ from, to, totalRecords }) => `Showing  ${from} to ${to} of ${totalRecords} entries`}
+                            highlightOnHover // Efek hover saat mouse di atas baris
+                            totalRecords={total} // Total jumlah data
+                            recordsPerPage={pageSize} // jumlah data per halaman
+                            page={page} // halaman saat ini
+                            onPageChange={(p) => setPage(p)} // update halaman ketika pindah
+                            sortStatus={sortStatus} // Status sorting saat ini
+                            onSortStatusChange={setSortStatus} // Fungsi untuk mengatur sorting
+                            selectedRecords={selectedRecords} // data yang dipilih (checkbox)
+                            onSelectedRecordsChange={setSelectedRecords} // update selected
+                            paginationText={({ from, to, totalRecords }) => `Showing  ${from} to ${to} of ${totalRecords} entries`} // teks pagination
                         />
                     </div>
                 </div>

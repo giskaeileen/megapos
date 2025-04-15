@@ -3,18 +3,19 @@ import { Dialog, Transition } from '@headlessui/react';
 import IconX from '../../components/Icon/IconX';
 
 interface AttributeSelectionModalProps {
-    openModal: boolean;
-    setOpenModal: any;
-    currentVariations: any;
-    selectedAttributes: any;
-    handleAttributeChange: any;
-    selectedPrice: any;
-    addPos: any;
-    variation: any;
-    setSelectedAttributes: any;
-    setSelectedPrice: any;
+    openModal: boolean; // Status apakah modal sedang terbuka
+    setOpenModal: any; // Fungsi untuk mengatur status modal (buka/tutup)
+    currentVariations: any; // Daftar variasi produk yang tersedia
+    selectedAttributes: any; // Atribut yang dipilih oleh pengguna
+    handleAttributeChange: any; // Fungsi untuk mengubah atribut yang dipilih
+    selectedPrice: any; // Harga dari variasi yang dipilih
+    addPos: any; // Fungsi untuk menambahkan produk ke POS (Point of Sale)
+    variation: any; // Variasi produk yang sedang diproses
+    setSelectedAttributes: any; // Fungsi untuk mengatur ulang atribut yang dipilih
+    setSelectedPrice: any; // Fungsi untuk mengatur ulang harga yang dipilih
 }
 
+// Komponen React untuk modal pemilihan atribut produk
 const AttributeSelectionModal: React.FC<AttributeSelectionModalProps> = ({
     openModal,
     setOpenModal,
@@ -31,6 +32,7 @@ const AttributeSelectionModal: React.FC<AttributeSelectionModalProps> = ({
     return (
         <Transition appear show={openModal} as={Fragment}>
             <Dialog as="div" open={openModal} onClose={() => setOpenModal(false)} className="relative z-[51]">
+                {/* Background hitam transparan saat modal muncul */}
                 <Transition.Child as={Fragment} enter="ease-out duration-300" enterFrom="opacity-0" enterTo="opacity-100" leave="ease-in duration-200" leaveFrom="opacity-100" leaveTo="opacity-0">
                     <div className="fixed inset-0 bg-[black]/60" />
                 </Transition.Child>
@@ -45,7 +47,9 @@ const AttributeSelectionModal: React.FC<AttributeSelectionModalProps> = ({
                             leaveFrom="opacity-100 scale-100"
                             leaveTo="opacity-0 scale-95"
                         >
+                            {/* Kontainer modal */}
                             <Dialog.Panel className="panel border-0 p-0 rounded-lg overflow-hidden w-full max-w-lg text-black dark:text-white-dark">
+                                {/* button close (X) */}
                                 <button
                                     type="button"
                                     onClick={() => setOpenModal(false)}
@@ -53,12 +57,16 @@ const AttributeSelectionModal: React.FC<AttributeSelectionModalProps> = ({
                                 >
                                     <IconX />
                                 </button>
+                                {/* Header modal */}
                                 <div className="text-lg font-medium bg-[#fbfbfb] dark:bg-[#121c2c] ltr:pl-5 rtl:pr-5 py-3 ltr:pr-[50px] rtl:pl-[50px]">Select Attribute</div>
+                                {/* Konten modal */}
                                 <div className="p-5">
+                                    {/* Tampilkan atribut jika variasi tersedia */}
                                     {currentVariations.length > 0 && (
                                         <div className="space-y-4">
                                             {Array.from(
                                                 new Map(
+                                                    // Ambil seluruh atribut dari variasi yang ada dan pastikan unik berdasarkan attribute_id
                                                     currentVariations
                                                         .flatMap((variation: any) =>
                                                             variation.product_attributes.map((attr: any) => ({
@@ -70,6 +78,7 @@ const AttributeSelectionModal: React.FC<AttributeSelectionModalProps> = ({
                                                 ).values() // Ambil hanya nilai unik
                                             ).map((attribute: any) => (
                                                 <div key={attribute.id}>
+                                                    {/* Label atribut */}
                                                     <label className="block mb-2 font-medium">
                                                         Select <span className="text-primary">
                                                         {
@@ -78,6 +87,7 @@ const AttributeSelectionModal: React.FC<AttributeSelectionModalProps> = ({
                                                         }</span>
                                                     </label>
 
+                                                    {/* Opsi pilihan untuk masing-masing nilai atribut */}
                                                     <div className="flex flex-wrap gap-2">
                                                         {Array.from(
                                                             new Set(

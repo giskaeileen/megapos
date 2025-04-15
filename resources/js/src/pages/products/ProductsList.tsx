@@ -25,14 +25,16 @@ const ProductsList= () => {
     const entityFilterColumn = `${entity}_filter_column`; 
     const entityFilterValue= `${entity}_filter_value`; 
 
-    // state 
+    // Simpan halaman aktif
     const [page, setPage] = useState<number>(() => {
         const storedPage = localStorage.getItem(entityPage);
         return storedPage ? parseInt(storedPage, 10) : 1; // Konversi ke number, default ke 1
     });
+    // Simpan kata kunci pencarian
     const [search, setSearch] = useState(() => {
         return localStorage.getItem(`${entity}_search`) || '';
     });
+    // Status sorting kolom
     const [sortStatus, setSortStatus] = useState<DataTableSortStatus>(() => {
         const storedSort = localStorage.getItem(`${entitySort}`);
         return storedSort
@@ -40,25 +42,31 @@ const ProductsList= () => {
             : { columnAccessor: 'created_at', direction: 'desc' }; 
     });
     const dispatch = useDispatch();
+    // State data utama
     const [items, setItems] = useState<any[]>([]);
     const [total, setTotal] = useState();
+    // API delete
     const [deleteProduct] = useDeleteProductMutation();
+    // Menyimpan kolom yang disembunyikan
     const [hideCols, setHideCols] = useState<string[]>([]);
+    // Cek RTL
     const isRtl = useSelector((state: IRootState) => state.themeConfig.rtlClass) === 'rtl' ? true : false;
+    // Kolom yang difilter
     const [selectedColumn, setSelectedColumn] = useState<string>(() => {
         return localStorage.getItem(`${entity}_filter_column`) || '';
     }); // Kolom yang difilter
+    // Nilai yang digunakan untuk filter
     const [filterValue, setFilterValue] = useState<string>(() => {
         return localStorage.getItem(`${entity}_filter_value`) || '';
     }); // nilai filter
 
-    // page
+    // Pagination dan record management
     const [pageSize, setPageSize] = useState(10);
     const [initialRecords, setInitialRecords] = useState<any[]>([]);
     const [records, setRecords] = useState(initialRecords);
     const [selectedRecords, setSelectedRecords] = useState<any>([]);
 
-    // date 
+    // Fetch data produk
     const { data, refetch } = useGetProductsQuery(
         { 
             storeId: storeId,
@@ -71,6 +79,7 @@ const ProductsList= () => {
         },
         { refetchOnMountOrArgChange: true } 
     );
+    // Kolom 
     const cols = [
         { accessor: 'no', title: 'No' },
         { accessor: 'product_name', title: 'Product Name' },
@@ -89,6 +98,7 @@ const ProductsList= () => {
      * search 
      */
 
+    // Simpan nilai pencarian ke localStorage
     useEffect(() => {
         localStorage.setItem(`${entity}_search`, search);
     }, [search]);
@@ -97,6 +107,7 @@ const ProductsList= () => {
      * filter 
      */
 
+    // Simpan filter ke localStorage
     useEffect(() => {
         localStorage.setItem(entityFilterColumn, selectedColumn);
         localStorage.setItem(entityFilterValue, filterValue);
@@ -106,10 +117,12 @@ const ProductsList= () => {
      * sort 
      */
 
+    // Simpan sorting ke localStorage
     useEffect(() => {
         localStorage.setItem(`${entitySort}`, JSON.stringify(sortStatus));
     }, [sortStatus]);
 
+    // Ambil ulang sort dari localStorage saat pertama kali render
     useEffect(() => {
         const storedSort = localStorage.getItem(`${entitySort}`);
         if (storedSort) {
@@ -121,6 +134,7 @@ const ProductsList= () => {
      * delete 
      */
 
+    // Fungsi hapus produk
     const deleteRow = () => {
         deleteConfirmation(selectedRecords, deleteProduct, refetch, storeId);
     };
@@ -129,6 +143,7 @@ const ProductsList= () => {
      * page 
      */
 
+    // Set initial record dari items setiap kali items berubah
     useEffect(() => {
         setInitialRecords(items)
     }, [items]);
@@ -157,6 +172,7 @@ const ProductsList= () => {
      * items 
      */
 
+    // Mapping data produk dari response API
     useEffect(() => {
         if (data?.data) {
             const mappedItems = data.data.map((d: any, index: number) => {
@@ -179,12 +195,6 @@ const ProductsList= () => {
 
                     } else if (col.accessor === 'no') {
                        mappedObject[col.accessor] = (index + 1) + ((page - 1) * pageSize)
-
-                    // } else if (col.accessor === 'product_image') {
-                    //     mappedObject[col.accessor] =  d.product_image 
-                    //         ? `${import.meta.env.VITE_SERVER_URI_BASE}storage/${entity}/${d.product_image}` 
-                    //         : '/assets/images/blank_product.png' 
-                    // }
                     } else if (col.accessor === 'product_image') {
                         mappedObject[col.accessor] = d.product_image
                             ? d.product_image.startsWith('http') 
@@ -242,15 +252,20 @@ const ProductsList= () => {
 
     return (
         <div>
+            {/* Header Title dan Aksi Tambah / Hapus */}
             <div className="flex items-center justify-between flex-wrap gap-4 mb-5">
+                {/* Judul, misal: Product, Category, dll */}
                 <h2 className="text-xl">{capitalizeFirstLetter(entity)}</h2>
+                {/* button Aksi - Delete & Add */}
                 <div className="flex sm:flex-row flex-col sm:items-center sm:gap-3 gap-4 w-full sm:w-auto">
                     <div className="relative">
                         <div className="flex items-center gap-2">
+                            {/* button Hapus Data Terpilih */}
                             <button type="button" className="btn btn-danger gap-2" onClick={() => deleteRow()}>
                                 <IconTrashLines />
                                 Delete
                             </button>
+                            {/* button Tambah Data Baru */}
                             <Link to={`/${storeId}/${entity}/create`} className="btn btn-primary gap-2">
                                 <IconPlus />
                                 Add New
@@ -259,9 +274,12 @@ const ProductsList= () => {
                     </div>
                 </div>
             </div>
+            {/* Panel Container Tabel */}
             <div className="panel px-0 border-white-light dark:border-[#1b2e4b]">
                 <div className="invoice-table">
+                    {/* Filter & Search Area */}
                     <div className="mb-4.5 px-5 flex md:items-center md:flex-row flex-col gap-5">
+                        {/* Dropdown Columns */}
                         <div className="flex md:items-center md:flex-row flex-col gap-5">
                             <div className="dropdown">
                                 <Dropdown
@@ -293,6 +311,7 @@ const ProductsList= () => {
                                                 >
                                                     <div className="flex items-center px-4 py-1">
                                                         <label className="cursor-pointer mb-0">
+                                                            {/* Checkbox untuk show/hide kolom */}
                                                             <input
                                                                 type="checkbox"
                                                                 checked={!hideCols.includes(col.accessor)}
@@ -316,6 +335,7 @@ const ProductsList= () => {
 
                         {/* Dropdown Pilih Kolom + Input Filter */}
                         <div className="flex gap-3">
+                            {/* Pilih kolom untuk difilter */}
                             <select 
                                 value={selectedColumn} 
                                 onChange={(e) => setSelectedColumn(e.target.value)}
@@ -335,6 +355,7 @@ const ProductsList= () => {
                                 }
                             </select>
 
+                            {/* Input nilai filter */}
                             <input 
                                 type="text"
                                 value={filterValue}
@@ -344,15 +365,16 @@ const ProductsList= () => {
                             />
                         </div>
 
+                        {/* Pencarian */}
                         <div className="ltr:ml-auto rtl:mr-auto">
                             <input type="text" className="form-input w-auto" placeholder="Search..." value={search} onChange={(e) => setSearch(e.target.value)} />
                         </div>
                     </div>
 
+                    {/* Tabel Data */}
                     <div className="datatables pagination-padding">
                         <DataTable
                             className="whitespace-nowrap table-hover invoice-table"
-                            // className="table-hover invoice-table"
                             records={records}
                             columns={[
                                 {
@@ -367,6 +389,7 @@ const ProductsList= () => {
                                         return (
                                             <div className="flex items-center font-semibold">
                                                 <div className="p-0.5 bg-white-dark/30 rounded-md w-max ltr:mr-2 rtl:ml-2">
+                                                {/* Gambar Produk */}
                                                     <img 
                                                         className="w-8 h-8 rounded-md overflow-hidden object-cover" 
                                                         src={product_image}
@@ -442,16 +465,16 @@ const ProductsList= () => {
                                     hidden: hideCols.includes('created_at'),
                                 },
                             ]}
-                            highlightOnHover
-                            totalRecords={total}
-                            recordsPerPage={pageSize}
-                            page={page}
-                            onPageChange={(p) => setPage(p)}
-                            sortStatus={sortStatus}
-                            onSortStatusChange={setSortStatus}
-                            selectedRecords={selectedRecords}
-                            onSelectedRecordsChange={setSelectedRecords}
-                            paginationText={({ from, to, totalRecords }) => `Showing  ${from} to ${to} of ${totalRecords} entries`}
+                            highlightOnHover // Efek hover saat mouse di atas baris
+                            totalRecords={total} // Total jumlah data
+                            recordsPerPage={pageSize} // jumlah data per halaman
+                            page={page} // halaman saat ini
+                            onPageChange={(p) => setPage(p)} // update halaman ketika pindah
+                            sortStatus={sortStatus} // Status sorting saat ini
+                            onSortStatusChange={setSortStatus} // Fungsi untuk mengatur sorting
+                            selectedRecords={selectedRecords} // data yang dipilih (checkbox)
+                            onSelectedRecordsChange={setSelectedRecords} // update selected
+                            paginationText={({ from, to, totalRecords }) => `Showing  ${from} to ${to} of ${totalRecords} entries`} // teks pagination
                         />
                     </div>
                 </div>

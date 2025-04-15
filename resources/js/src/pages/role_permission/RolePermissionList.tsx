@@ -20,19 +20,23 @@ const RolePermissionList = () => {
     const entityPage = `${pathnames[0]}_page`; 
     const entitySort = `${pathnames[0]}_sort`; 
 
+    // Inisialisasi state page dengan data dari localStorage (default: 1)
     const [page, setPage] = useState<number>(() => {
         const storedPage = localStorage.getItem(entityPage);
         return storedPage ? parseInt(storedPage, 10) : 1; // Konversi ke number, default ke 1
     });
+    // State untuk pencarian
     const [search, setSearch] = useState(() => {
         return localStorage.getItem(`${entity}_search`) || '';
     });
+    // State untuk status sorting
     const [sortStatus, setSortStatus] = useState<DataTableSortStatus>(() => {
         const storedSort = localStorage.getItem(`${entitySort}`);
         return storedSort
             ? JSON.parse(storedSort) 
             : { columnAccessor: 'name', direction: 'asc' }; 
     });
+    // Mengambil data role permission dari API
     const { data, refetch } = useGetRolePermissionsQuery(
         { 
             page, 
@@ -81,7 +85,6 @@ const RolePermissionList = () => {
                 icon: 'info',
                 title: 'No Selection',
                 text: 'Please select at least one record to delete.',
-                // customClass: 'sweet-alerts',
             });
             return;
         }
@@ -94,7 +97,6 @@ const RolePermissionList = () => {
             confirmButtonText: 'Delete',
             cancelButtonText: 'Cancel',
             padding: '2em',
-            // customClass: 'sweet-alerts',
         }).then(async (result) => {
             if (result.isConfirmed) {
                 try {
@@ -133,6 +135,7 @@ const RolePermissionList = () => {
      * page 
      */
 
+    // Pagination (halaman dan jumlah record)
     const [pageSize, setPageSize] = useState(10);
     const [initialRecords, setInitialRecords] = useState<any[]>([]);
     useEffect(() => {
@@ -165,6 +168,7 @@ const RolePermissionList = () => {
      * items 
      */
 
+    // Proses data dari API menjadi item
     useEffect(() => {
         if (data?.data) {
             const mappedItems = data.data.map((d: any, index: number) => ({
@@ -172,15 +176,6 @@ const RolePermissionList = () => {
                 no: (index + 1) + ((page - 1) * pageSize),
                 name: d.name,
                 permissions: d.permissions,
-                // created_at: new Intl.DateTimeFormat('id-ID', {
-                //     year: 'numeric',
-                //     month: '2-digit',
-                //     day: '2-digit',
-                //     hour: '2-digit',
-                //     minute: '2-digit',
-                //     second: '2-digit',
-                //     timeZone: 'Asia/Jakarta',
-                // }).format(new Date(d.created_at))
             }));
             setItems(mappedItems);
             setTotal(data.total)
@@ -202,7 +197,6 @@ const RolePermissionList = () => {
         { accessor: 'no', title: 'No' },
         { accessor: 'name', title: 'Name' },
         { accessor: 'permissions', title: 'Permissions' },
-        // { accessor: 'created_at', title: 'Created At' },
     ];
 
     // Memuat data dari localStorage saat komponen pertama kali dirender
@@ -229,12 +223,14 @@ const RolePermissionList = () => {
      * tools 
      */
 
+    // Kapitalisasi huruf awal
     function capitalizeFirstLetter(str: string): string {
         return str.charAt(0).toUpperCase() + str.slice(1);
     }
 
     return (
         <div>
+            {/* Header */}
             <div className="flex items-center justify-between flex-wrap gap-4 mb-5">
                 <h2 className="text-xl">{capitalizeFirstLetter(entity)}</h2>
                 <div className="flex sm:flex-row flex-col sm:items-center sm:gap-3 gap-4 w-full sm:w-auto">
@@ -252,8 +248,10 @@ const RolePermissionList = () => {
                     </div>
                 </div>
             </div>
+            {/* Tabel  Panel */}
             <div className="panel px-0 border-white-light dark:border-[#1b2e4b]">
                 <div className="invoice-table">
+                    {/* Filter & Kolom Dropdown */}
                     <div className="mb-4.5 px-5 flex md:items-center md:flex-row flex-col gap-5">
                             <div className="flex md:items-center md:flex-row flex-col gap-5">
                                 <div className="dropdown">
@@ -305,6 +303,7 @@ const RolePermissionList = () => {
                         </div>
                     </div>
 
+                    {/* Tabel Data */}
                     <div className="datatables pagination-padding">
                         <DataTable
                             className="whitespace-nowrap table-hover invoice-table align-start-table"
@@ -333,43 +332,15 @@ const RolePermissionList = () => {
                                         );
                                     },
                                 },
-                                // {
-                                //     accessor: 'permissions',
-                                //     sortable: true,
-                                //     hidden: hideCols.includes('permissions'),
-                                //     render: ({ permissions, id}) => {
-                                //         return (
-                                //             <div className="flex items-center font-semibold gap-2">
-                                //                 {permissions.map((item: any) => (
-                                //                     <span key={item.id} className="badge bg-secondary rounded-full">
-                                //                         {item.name}
-                                //                     </span>
-                                //                 ))}
-                                //             </div>
-                                //         );
-                                //     },
-                                // },
                                 {
                                     accessor: 'permissions',
                                     sortable: true,
                                     hidden: hideCols.includes('permissions'),
                                     render: ({ permissions }: { permissions: { id: number; name: string }[] }) => {
-                                        // Proses data permissions menjadi format terkelompok
-                                        // const groupedPermissions = permissions.reduce((acc: Record<string, string[]>, item: any) => {
-                                        //     const [action, entity] = item.name.split(' '); // Pisahkan entity dan action
-                                        //     if (!acc[entity]) {
-                                        //         acc[entity] = [];
-                                        //     }
-                                        //     acc[entity].push(action); // Kelompokkan berdasarkan entity
-                                        //     return acc;
-                                        // }, {});
                                         const groupedPermissions = permissions.reduce((acc: Record<string, string[]>, item: any) => {
                                             const [action, ...entityParts] = item.name.split(' '); // Pisahkan entity dan action
                                             const entity = entityParts.join(' '); // Gabungkan sisa kata sebagai entity
 
-                                            // if (!acc[entity]) {
-                                            //     acc[entity] = [];
-                                            // }
                                             acc[entity] = acc[entity] || [];
                                             acc[entity].push(action); // Kelompokkan berdasarkan entity
                                             return acc;
@@ -394,22 +365,17 @@ const RolePermissionList = () => {
                                     },
                                 },
 
-                                // {
-                                //     accessor: 'created_at',
-                                //     sortable: true,
-                                //     hidden: hideCols.includes('created_at'),
-                                // },
                             ]}
-                            highlightOnHover
-                            totalRecords={total}
-                            recordsPerPage={pageSize}
-                            page={page}
-                            onPageChange={(p) => setPage(p)}
-                            sortStatus={sortStatus}
-                            onSortStatusChange={setSortStatus}
-                            selectedRecords={selectedRecords}
-                            onSelectedRecordsChange={setSelectedRecords}
-                            paginationText={({ from, to, totalRecords }) => `Showing  ${from} to ${to} of ${totalRecords} entries`}
+                            highlightOnHover // Efek hover saat mouse di atas baris
+                            totalRecords={total} // Total jumlah data
+                            recordsPerPage={pageSize} // jumlah data per halaman
+                            page={page} // halaman saat ini
+                            onPageChange={(p) => setPage(p)} // update halaman ketika pindah
+                            sortStatus={sortStatus} // Status sorting saat ini
+                            onSortStatusChange={setSortStatus} // Fungsi untuk mengatur sorting
+                            selectedRecords={selectedRecords} // data yang dipilih (checkbox)
+                            onSelectedRecordsChange={setSelectedRecords} // update selected
+                            paginationText={({ from, to, totalRecords }) => `Showing  ${from} to ${to} of ${totalRecords} entries`} // teks pagination
                         />
                     </div>
                 </div>

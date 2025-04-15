@@ -10,10 +10,13 @@ import { useParams } from 'react-router-dom';
 import { useGetSingleSuppliersQuery, useStoreSuppliersMutation, useUpdateSuppliersMutation } from '../../redux/features/suppliers/suppliersApi';
 
 const SuppliersForm = () => {
-    const navigate = useNavigate();
-    const { id } = useParams();  
+    const navigate = useNavigate(); // Untuk navigasi halaman
+    const { id } = useParams();  // Mengambil parameter ID dari URL (jika ada)
+     // Ambil data supplier berdasarkan ID jika ID tersedia
     const { data } = useGetSingleSuppliersQuery(id, { skip: !id });  // Menarik data jika ID ada
+    // Mutasi untuk update data supplier
     const [updateSupplier, { isSuccess: isUpdateSuccess, error: errorUpdate }] = useUpdateSuppliersMutation();
+     // Mutasi untuk menyimpan data supplier baru
     const [storeSupplier, {
         data: dataStore, 
         error: errorStore, 
@@ -25,15 +28,17 @@ const SuppliersForm = () => {
      */
 
     const location = useLocation();
-    const pathnames = location.pathname.split('/').filter((x) => x);
-    const entity = pathnames[0];
+    const pathnames = location.pathname.split('/').filter((x) => x); // Memecah URL berdasarkan '/'
+    const entity = pathnames[0]; // Misalnya: 'suppliers'
 
     const dispatch = useDispatch();
 
+    // Set judul halaman menggunakan Redux
     useEffect(() => {
         dispatch(setPageTitle('File Upload Preview'));
     });
 
+    // Kapitalisasi huruf pertama
     function capitalizeFirstLetter(str: string): string {
         return str.charAt(0).toUpperCase() + str.slice(1);
     }
@@ -42,6 +47,7 @@ const SuppliersForm = () => {
      * validation 
      */
 
+    // Schema validasi dengan Yup
     const schema = Yup.object().shape({
             name: Yup.string()
                 .required("Name is required")
@@ -89,7 +95,7 @@ const SuppliersForm = () => {
 
     // Menangani formik
     const formik = useFormik({
-        enableReinitialize: true,
+        enableReinitialize: true, // Supaya data bisa diisi ulang saat update
         initialValues: {
             name: data?.name || '',
             shopname: data?.shopname || '',
@@ -105,9 +111,9 @@ const SuppliersForm = () => {
             address: data?.address || '',
             type: data?.type|| '',
         },
-        validationSchema: schema,
+        validationSchema: schema, // Menggunakan schema Yup
         onSubmit: async (values) => {
-            const formData = new FormData();
+            const formData = new FormData(); // Untuk mengirim data multipart/form-data
             formData.append("name", values.name);
             formData.append("shopname", values.shopname);
             formData.append("email", values.email);
@@ -125,9 +131,11 @@ const SuppliersForm = () => {
             }
 
             if (id) {
+                // Jika ID ada, berarti update
                 formData.append("_method", "PUT");
                 await updateSupplier({id, data: formData});
             } else {
+                // Jika tidak, maka create
                 await storeSupplier(formData);
             }
         }
@@ -137,17 +145,19 @@ const SuppliersForm = () => {
 
     // image
     const [images, setImages] = useState<any>([]);
-    const maxNumber = 69;
+    const maxNumber = 69; // Jumlah maksimum gambar
 
+    // Fungsi saat gambar diubah
     const onChange = (imageList: ImageListType, addUpdateIndex: number[] | undefined) => {
     setImages(imageList as never[]);
         if (imageList.length > 0) {
-            formik.setFieldValue("photo", imageList[0].file);
+            formik.setFieldValue("photo", imageList[0].file); // Set file ke formik
         } else {
             formik.setFieldValue("photo", null);
         }
     };
 
+    // Jika sedang edit dan ada foto dari server, tampilkan preview
     useEffect(() => {
         if (data && data.photo) {
             const initialImage = {
@@ -164,24 +174,25 @@ const SuppliersForm = () => {
 
     useEffect(() => {
         if (isSuccessStore) {
-            toast.success("Create Successfully")
+            toast.success("Create Successfully") // Notifikasi sukses create
             navigate(`/${entity}/${dataStore?.id}`);
         }
         if (isUpdateSuccess) {
-            toast.success("Update Successfully")
+            toast.success("Update Successfully") // Notifikasi sukses update
         }
         if (errorStore) {
             const errorData = errorStore as any;
-            toast.error(errorData.data.message);
+            toast.error(errorData.data.message); // Notifikasi error saat create
         }
         if (errorUpdate) {
             const errorData = errorStore as any;
-            toast.error(errorData.data.message);
+            toast.error(errorData.data.message); // Notifikasi error saat update
         }
     }, [isSuccessStore, isUpdateSuccess, errorStore, errorUpdate])
 
     return (
         <form onSubmit={handleSubmit} >
+            {/* Header dengan judul dan button Save */}
             <div className="flex items-center justify-between flex-wrap gap-4 mb-5">
                 <h2 className="text-xl">{capitalizeFirstLetter(entity)}</h2>
                 <div className="flex sm:flex-row flex-col sm:items-center sm:gap-3 gap-4 w-full sm:w-auto">
@@ -194,11 +205,14 @@ const SuppliersForm = () => {
                     </div>
                 </div>
             </div>
+            {/* Grid utama yang berisi bagian upload foto dan form input lainnya */}
             <div className="grid lg:grid-cols-6 grid-cols-1 gap-6">
+                {/* Bagian Upload Foto */}
                 <div className="col-span-1 lg:col-span-2">
                     <div className="panel" id="single_file">
                         <div className="mb-5">
                             <div className="custom-file-container" data-upload-id="myFirstImage">
+                                {/* Label Upload dan button hapus gambar */}
                                 <div className="label-container">
                                     <label>Upload </label>
                                     <button
@@ -206,12 +220,13 @@ const SuppliersForm = () => {
                                         className="custom-file-container__image-clear"
                                         title="Clear Image"
                                         onClick={() => {
-                                            setImages([]);
+                                            setImages([]); // Hapus semua pratinjau gambar
                                         }}
                                     >
                                         ×
                                     </button>
                                 </div>
+                                {/* Input file tersembunyi */}
                                 <label className="custom-file-container__custom-file"></label>
                                 <input
                                     hidden
@@ -220,8 +235,8 @@ const SuppliersForm = () => {
                                     type="file"
                                     accept="image/*"
                                     onChange={(event: any) => {
-                                        const file = event.currentTarget.files[0];
-                                        formik.setFieldValue("photo", file);
+                                        const file = event.currentTarget.files[0]; // Ambil file
+                                        formik.setFieldValue("photo", file); // Set field di Formik
 
                                         // Set gambar baru ke pratinjau
                                         const reader = new FileReader();
@@ -232,13 +247,17 @@ const SuppliersForm = () => {
                                     }}
                                     className="custom-file-container__custom-file__custom-file-input"
                                 />
+                                {/* Validasi formik untuk photo */}
                                 {formik.errors.photo && formik.touched.photo && (
                                     <div className="text-red-500 text-sm mt-1">{formik.errors.photo}</div>
                                 )}
+                                {/* Maksimum ukuran file 10MB */}
                                 <input type="hidden" name="MAX_FILE_SIZE" value="10485760" />
+                                {/* Komponen image uploading */}
                                 <ImageUploading value={images} onChange={onChange} maxNumber={maxNumber}>
                                     {({ imageList, onImageUpload, onImageRemoveAll, onImageUpdate, onImageRemove, isDragging, dragProps }) => (
                                         <div className="upload__image-wrapper">
+                                            {/* Tombol untuk memilih file */}
                                             <button
                                                 type="button"
                                                 className="custom-file-container__custom-file__custom-file-control"
@@ -248,6 +267,7 @@ const SuppliersForm = () => {
                                             >
                                                 Choose File...
                                             </button>
+                                            {/* Pratinjau gambar yang diupload */}
                                             {imageList.map((image, index) => (
                                                 <div key={index} className="custom-file-container__image-preview relative">
                                                     <img src={image.dataURL} alt="img" className="m-auto" />
@@ -257,19 +277,21 @@ const SuppliersForm = () => {
                                         </div>
                                     )}
                                 </ImageUploading>
+                                {/* Gambar default jika belum ada gambar yang dipilih */}
                                 {images.length === 0 ? <img src="/assets/images/file-preview.svg" className="max-w-md w-full m-auto" alt="" /> : ''}
                             </div>
                         </div>
                     </div>
                 </div>
 
-                {/* <div className="pt-5 grid lg:grid-cols-2 grid-cols-1 gap-6"> */}
+                {/* Bagian form input utama */}
                 <div className="grid lg:grid-cols-1 grid-cols-1 gap-6 col-span-1 lg:col-span-4">
                     {/* Grid */}
                     <div className="panel" id="forms_grid">
                         <div className="mb-5">
                             <div className="space-y-5">
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    {/* Input Nama */}
                                     <div>
                                         <label htmlFor="name">Name<span className="text-danger">*</span></label>
                                         <input
@@ -285,6 +307,7 @@ const SuppliersForm = () => {
                                         )}
                                     </div>
 
+                                    {/* Input Nama Toko */}
                                     <div>
                                         <label htmlFor="name">Shop Name<span className="text-danger">*</span></label>
                                         <input
@@ -300,6 +323,7 @@ const SuppliersForm = () => {
                                         )}
                                     </div>
 
+                                    {/* Input Email */}
                                     <div>
                                         <label htmlFor="email">Email<span className="text-danger">*</span></label>
                                         <input
@@ -315,6 +339,7 @@ const SuppliersForm = () => {
                                         )}
                                     </div>
 
+                                    {/* Input Nomor Telepon */}
                                     <div>
                                         <label htmlFor="phone">Phone<span className="text-danger">*</span></label>
                                         <input
@@ -330,6 +355,7 @@ const SuppliersForm = () => {
                                         )}
                                     </div>
 
+                                    {/* Input Pemilik Rekening */}
                                     <div>
                                         <label htmlFor="account_holder">Account Holder</label>
                                         <input
@@ -345,6 +371,7 @@ const SuppliersForm = () => {
                                         )}
                                     </div>
 
+                                    {/* Pilihan Nama Bank */}
                                     <div>
                                         <label htmlFor="bank_name">Bank Name</label>
                                         <select
@@ -365,6 +392,7 @@ const SuppliersForm = () => {
                                         )}
                                     </div>
 
+                                    {/* Nomor Rekening */}
                                     <div>
                                         <label htmlFor="account_number">Account Number</label>
                                         <input
@@ -380,6 +408,7 @@ const SuppliersForm = () => {
                                         )}
                                     </div>
 
+                                    {/* Cabang Bank */}
                                     <div>
                                         <label htmlFor="bank_branch">Bank Branch</label>
                                         <input
@@ -395,6 +424,7 @@ const SuppliersForm = () => {
                                         )}
                                     </div>
 
+                                    {/* Kota */}
                                     <div>
                                         <label htmlFor="city">City<span className="text-danger">*</span></label>
                                         <input
@@ -410,6 +440,7 @@ const SuppliersForm = () => {
                                         )}
                                     </div>
 
+                                    {/* Tipe Pengguna */}
                                     <div>
                                         <label htmlFor="type">Type<span className="text-danger">*</span></label>
                                         <select
@@ -427,6 +458,7 @@ const SuppliersForm = () => {
                                         )}
                                     </div>
 
+                                    {/* Alamat */}
                                     <div className="sm:col-span-2">
                                         <label htmlFor="address">Address<span className="text-danger">*</span></label>
                                         <textarea 

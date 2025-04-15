@@ -14,23 +14,23 @@ import PosPaymentModal from './PosPaymentModal';
 import PosAddMemberModal from './PosAddMemberModal';
 
 type Props = {
-    isOpen: boolean;
-    toggleSidebar: () => void;
-    dataCart: any[];
-    handleQtyChange: (item: any, newQty: number) => void;
-    storeId: string;
+    isOpen: boolean; // Menentukan apakah sidebar cart terbuka
+    toggleSidebar: () => void; // Fungsi untuk membuka/tutup sidebar
+    dataCart: any[]; // Data cart (produk yang ditambahkan)
+    handleQtyChange: (item: any, newQty: number) => void; // Handler untuk mengubah jumlah item
+    storeId: string; // ID toko untuk query API
 
-    customer: any;
-    setCustomer: (customer: any) => void;
+    customer: any; // Data customer
+    setCustomer: (customer: any) => void; // Setter customer
 
-    setDataCart: (cart: any[]) => void;
-    addPos: (product: any) => void;
-    totalPrice: any;
-    setTotalPrice: any;
+    setDataCart: (cart: any[]) => void;  // Setter data cart
+    addPos: (product: any) => void; // Fungsi untuk menambahkan produk ke cart
+    totalPrice: any; // Total harga seluruh cart
+    setTotalPrice: any; // Setter total harga
 };
 
 const Cart: FC<Props> = ({ isOpen, toggleSidebar, dataCart, handleQtyChange, storeId, customer, setCustomer, setDataCart, addPos, totalPrice, setTotalPrice}) => {
-    // State management
+    // State internal komponen
     const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('');
     const [openAddMemberModal, setOpenAddMemberModal] = useState(false);
     const [addContactModal, setAddContactModal] = useState(false);
@@ -39,34 +39,34 @@ const Cart: FC<Props> = ({ isOpen, toggleSidebar, dataCart, handleQtyChange, sto
     const [pay, setPay] = useState('');
     const [noRekening, setNoRekening] = useState('');
     const [nameRekening, setNameRekening] = useState('');
-    // const [totalPrice, setTotalPrice] = useState(0);
     const [subTotalPrice, setSubTotalPrice] = useState(0);
     const [quantity, setQuantity] = useState(0);
-    const [selectedOption, setSelectedOption] = useState<any>(null);
-    const [selectedOption2, setSelectedOption2] = useState<any>(null);
+    const [selectedOption, setSelectedOption] = useState<any>(null); // Untuk member
+    const [selectedOption2, setSelectedOption2] = useState<any>(null); // Untuk produk
     const [additionalOptions, setAdditionalOptions] = useState({
-        printReceipt: true,
+        printReceipt: true, // Cetak struk setelah order
         sendEmail: false,
     });
 
     // API hooks
     const { data: members, refetch } = useGetMembersQuery({ storeId }, { refetchOnMountOrArgChange: true });
     const { data: products } = useGetProductsSKUQuery({ storeId }, { refetchOnMountOrArgChange: true });
-    const [createPosOrder] = useCreatePosOrderMutation();
-    const [createMidtransToken, { data: dataMidtransToken }] = useCreateMidtransTokenMutation();
+    const [createPosOrder] = useCreatePosOrderMutation(); // Untuk simpan order
+    const [createMidtransToken, { data: dataMidtransToken }] = useCreateMidtransTokenMutation(); // Untuk bayar pakai Midtrans
 
     const handleTotalPriceChange = (e: any) => {
         // setTotalPrice(e.target.value);
     };
 
-    // Constants
+    // Untuk bayar pakai Midtrans
     const paymentMethods = ['Cash', 'Wallet'];
 
-    // Handlers
+    // Pilih metode pembayaran
     const handlePaymentMethodClick = (method: string) => {
         setSelectedPaymentMethod(method);
     };
 
+    // Tombol virtual untuk input nilai pembayaran
     const handleButtonClick = (value: string) => {
         if (value === 'clear') {
             setInputValue('');
@@ -77,6 +77,7 @@ const Cart: FC<Props> = ({ isOpen, toggleSidebar, dataCart, handleQtyChange, sto
         }
     };
 
+    // Hitung ulang total dan subtotal dari cart
     const updateSummary = (cart: any[]) => {
         if (!Array.isArray(cart)) return;
 
@@ -99,6 +100,7 @@ const Cart: FC<Props> = ({ isOpen, toggleSidebar, dataCart, handleQtyChange, sto
         setQuantity(totalQuantity);
     };
 
+    // Simpan order ke backend
     const saveOrder = async () => {
         const payload = {
             payment_status: selectedPaymentMethod,
@@ -116,9 +118,10 @@ const Cart: FC<Props> = ({ isOpen, toggleSidebar, dataCart, handleQtyChange, sto
 
         try {
             const response = await createPosOrder({ storeId, data: payload });
-            setDataCart([]);
-            localStorage.removeItem('cart');
+            setDataCart([]); // Kosongkan cart
+            localStorage.removeItem('cart'); // Hapus cache cart
 
+            // Cetak struk jika diaktifkan
             if (additionalOptions.printReceipt) {
                 PrintReceipt(payload);
             }
@@ -130,6 +133,7 @@ const Cart: FC<Props> = ({ isOpen, toggleSidebar, dataCart, handleQtyChange, sto
                 confirmButtonText: 'OK',
             });
 
+            // Reset state pembayaran
             setPaymentStatus('');
             setPay('');
             setTotalPrice(0);
@@ -139,7 +143,7 @@ const Cart: FC<Props> = ({ isOpen, toggleSidebar, dataCart, handleQtyChange, sto
         }
     };
 
-    // Effects
+    // Hitung ulang total jika cart atau member berubah
     useEffect(() => {
         if (dataCart?.length > 0) {
             updateSummary(dataCart);
@@ -148,14 +152,17 @@ const Cart: FC<Props> = ({ isOpen, toggleSidebar, dataCart, handleQtyChange, sto
 
     return (
         <div>
+            {/* Tombol toggle cart */}
             <CartToggleButton toggleSidebar={toggleSidebar} quantity={quantity} totalPrice={totalPrice} />
 
+            {/* Sidebar Cart */}
             <nav
                 className={`${isOpen ? 'ltr:!right-0 rtl:!left-0' : 'hidden'} 
         bg-white fixed ltr:-right-[400px] rtl:-left-[400px] top-0 bottom-0 w-full max-w-[400px] 
         sm:h-[calc(100vh_-_60px)] h-full shadow-[5px_0_25px_0_rgba(94,92,154,0.1)] 
         transition-[right] duration-300 z-[51] dark:bg-black p-4`}
             >
+                {/* Header */}
                 <div className="flex items-center justify-between p-4 border-b">
                     <h2 className="text-lg font-bold">Your Cart</h2>
                     <button onClick={toggleSidebar} className="text-red-500 focus:outline-none">
@@ -163,6 +170,7 @@ const Cart: FC<Props> = ({ isOpen, toggleSidebar, dataCart, handleQtyChange, sto
                     </button>
                 </div>
 
+                {/* Daftar item */}
                 <div className="overflow-y-auto sm:h-[calc(100vh_-_380px)] border-b">
                     <div className="table-responsive">
                         <table className="table-hover">
@@ -175,48 +183,72 @@ const Cart: FC<Props> = ({ isOpen, toggleSidebar, dataCart, handleQtyChange, sto
                     </div>
                 </div>
 
+                {/* Footer: Member, Produk, dan Pembayaran */}
                 <div className="py-4">
-                    <MemberSelector members={members} selectedOption={selectedOption} setSelectedOption={setSelectedOption} showAddMemberModal={() => setOpenAddMemberModal(true)} refetch={refetch} />
-
-                    <ProductSelector products={products} selectedOption2={selectedOption2} setSelectedOption2={setSelectedOption2} addPos={addPos} />
-
-                    <PaymentButton totalPrice={totalPrice} showPaymentModal={() => setAddContactModal(true)} />
-
-                    <PosPaymentModal
-                        addContactModal={addContactModal}
-                        setAddContactModal={setAddContactModal}
-                        paymentMethods={paymentMethods}
-                        selectedPaymentMethod={selectedPaymentMethod}
-                        handlePaymentMethodClick={handlePaymentMethodClick}
-                        totalPrice={totalPrice}
-                        inputValue={inputValue}
-                        handlePayChange={(e: any) => setInputValue(e.target.value)}
-                        handleButtonClick={handleButtonClick}
-                        pay={pay}
-                        paymentStatus={paymentStatus}
-                        handlePaymentStatusChange={(e: any) => setPaymentStatus(e.target.value)}
-                        saveOrder={saveOrder}
-                        handleTotalPriceChange={handleTotalPriceChange}
-                        noRekening={noRekening}
-                        nameRekening={nameRekening}
-                        handleNoRekeningChange={(e: any) => setNoRekening(e.target.value)}
-                        handleNameRekeningChange={(e: any) => setNameRekening(e.target.value)}
-                        createMidtransToken={createMidtransToken}
-                        dataMidtransToken={dataMidtransToken}
-                        customer={customer}
-                        quantity={quantity}
-                        subTotalPrice={subTotalPrice}
-                        storeId={storeId}
-                        setPaymentStatus={setPaymentStatus}
-                        setPay={setPay}
-                        dataCart={dataCart}
-                        additionalOptions={additionalOptions}
-                        setAdditionalOptions={setAdditionalOptions}
-                        setDataCart={setDataCart}
-                        setTotalPrice={setTotalPrice}
+                    {/* Komponen untuk memilih member yang akan digunakan dalam transaksi */}
+                    <MemberSelector 
+                        members={members} // Daftar member yang tersedia
+                        selectedOption={selectedOption} // Member yang sedang dipilih
+                        setSelectedOption={setSelectedOption}  // Fungsi untuk mengatur member yang dipilih
+                        showAddMemberModal={() => setOpenAddMemberModal(true)}  // Menampilkan modal untuk menambah member
+                        refetch={refetch}   // Fungsi untuk me-refresh data member
                     />
 
-                    <PosAddMemberModal openAddMemberModal={openAddMemberModal} setOpenAddMemberModal={setOpenAddMemberModal} refetch={refetch} />
+                    {/* Komponen untuk memilih produk yang akan dimasukkan ke dalam cart/POS */}
+                    <ProductSelector  // Daftar produk
+                        products={products} // Daftar Produk
+                        selectedOption2={selectedOption2} // Produk yang sedang dipilih
+                        setSelectedOption2={setSelectedOption2}  // Fungsi untuk mengatur produk yang dipilih
+                        addPos={addPos}  // Fungsi untuk menambahkan produk ke daftar transaksi
+                    /> 
+
+                    {/* Tombol untuk menampilkan modal pembayaran jika sudah ada item dalam cart */}
+                    <PaymentButton 
+                        totalPrice={totalPrice} // Total harga dari semua produk yang dipilih
+                        showPaymentModal={() => setAddContactModal(true)} // Menampilkan modal pembayaran
+                    />
+
+                    {/* Modal untuk proses pembayaran */}
+                    <PosPaymentModal
+                        addContactModal={addContactModal} // State untuk membuka modal
+                        setAddContactModal={setAddContactModal} // Fungsi untuk mengatur buka/tutup modal
+                        paymentMethods={paymentMethods} // Daftar metode pembayaran (tunai, transfer, dll)
+                        selectedPaymentMethod={selectedPaymentMethod} // Metode pembayaran yang dipilih
+                        handlePaymentMethodClick={handlePaymentMethodClick} // Fungsi saat memilih metode pembayaran
+                        totalPrice={totalPrice}  // Total harga yang harus dibayar
+                        inputValue={inputValue} // Nilai input pembayaran dari user
+                        handlePayChange={(e: any) => setInputValue(e.target.value)}  // Fungsi untuk mengatur nilai pembayaran
+                        handleButtonClick={handleButtonClick}  // Fungsi ketika tombol "Bayar" ditekan
+                        pay={pay} // Jumlah yang dibayarkan
+                        paymentStatus={paymentStatus} // Status pembayaran (Lunas / Belum Lunas)
+                        handlePaymentStatusChange={(e: any) => setPaymentStatus(e.target.value)} // Fungsi untuk mengubah status pembayaran
+                        saveOrder={saveOrder} // Fungsi untuk menyimpan transaksi
+                        handleTotalPriceChange={handleTotalPriceChange} // Fungsi untuk mengubah total harga (misal karena diskon)
+                        noRekening={noRekening} // Nomor rekening customer (jika metode transfer)
+                        nameRekening={nameRekening} // Nama pemilik rekening
+                        handleNoRekeningChange={(e: any) => setNoRekening(e.target.value)} // Fungsi untuk mengatur nomor rekening
+                        handleNameRekeningChange={(e: any) => setNameRekening(e.target.value)}  // Fungsi untuk mengatur nama rekening
+                        createMidtransToken={createMidtransToken} // Fungsi untuk membuat token Midtrans (gateway pembayaran)
+                        dataMidtransToken={dataMidtransToken} // Token Midtrans yang sudah dibuat
+                        customer={customer} // Data customer yang digunakan dalam transaksi
+                        quantity={quantity} // Total jumlah produk
+                        subTotalPrice={subTotalPrice} // Harga sebelum pajak/diskon (jika ada)
+                        storeId={storeId} // ID toko / cabang
+                        setPaymentStatus={setPaymentStatus} // Fungsi untuk mengatur status pembayaran
+                        setPay={setPay} // Fungsi untuk mengatur nominal yang dibayarkan
+                        dataCart={dataCart} // Daftar produk yang ada dalam keranjang
+                        additionalOptions={additionalOptions} // Opsi tambahan seperti catatan, diskon, dsb
+                        setAdditionalOptions={setAdditionalOptions} // Fungsi untuk mengatur opsi tambahan
+                        setDataCart={setDataCart} // Fungsi untuk mengatur ulang isi cart
+                        setTotalPrice={setTotalPrice} // Fungsi untuk mengubah total harga
+                    />
+
+                    {/* Modal untuk menambahkan member baru */}
+                    <PosAddMemberModal 
+                        openAddMemberModal={openAddMemberModal} // State pembuka modal
+                        setOpenAddMemberModal={setOpenAddMemberModal}  // Fungsi untuk menutup modal
+                        refetch={refetch} // Fungsi untuk refresh data member setelah penambahan
+                    />
                 </div>
             </nav>
         </div>

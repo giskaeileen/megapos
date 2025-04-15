@@ -21,19 +21,23 @@ const RolesList= () => {
     const entityPage = `${pathnames[0]}_page`; 
     const entitySort = `${pathnames[0]}_sort`; 
 
+    // State untuk halaman saat ini, memuat dari localStorage jika tersedia
     const [page, setPage] = useState<number>(() => {
         const storedPage = localStorage.getItem(entityPage);
         return storedPage ? parseInt(storedPage, 10) : 1; // Konversi ke number, default ke 1
     });
+    // State untuk kata kunci pencarian, memuat dari localStorage jika tersedia
     const [search, setSearch] = useState(() => {
         return localStorage.getItem(`${entity}_search`) || '';
     });
+    // State untuk status sorting, memuat dari localStorage jika tersedia
     const [sortStatus, setSortStatus] = useState<DataTableSortStatus>(() => {
         const storedSort = localStorage.getItem(`${entitySort}`);
         return storedSort
             ? JSON.parse(storedSort) 
             : { columnAccessor: 'created_at', direction: 'desc' }; 
     });
+    // Mengambil data role dari API
     const { data, refetch } = useGetRolesQuery(
         { 
             page, 
@@ -44,10 +48,10 @@ const RolesList= () => {
         { refetchOnMountOrArgChange: true } 
     );
     const dispatch = useDispatch();
-    const [items, setItems] = useState<any[]>([]);
-    const [total, setTotal] = useState();
-    const [deleteRoles] = useDeleteRolesMutation();
-    const [hideCols, setHideCols] = useState<string[]>([]);
+    const [items, setItems] = useState<any[]>([]); // Data yang ditampilkan
+    const [total, setTotal] = useState(); // Total data
+    const [deleteRoles] = useDeleteRolesMutation(); // Fungsi untuk menghapus role
+    const [hideCols, setHideCols] = useState<string[]>([]); // Kolom yang disembunyikan
 
     /*****************************
      * search 
@@ -76,6 +80,7 @@ const RolesList= () => {
      * delete 
      */
 
+    // Fungsi untuk menghapus data yang dipilih
     const deleteRow = () => {
         deleteConfirmation(selectedRecords, deleteRoles, refetch);
     };
@@ -84,13 +89,13 @@ const RolesList= () => {
      * page 
      */
 
-    const [pageSize, setPageSize] = useState(10);
-    const [initialRecords, setInitialRecords] = useState<any[]>([]);
+    const [pageSize, setPageSize] = useState(10); // Jumlah data per halaman
+    const [initialRecords, setInitialRecords] = useState<any[]>([]); // Data awal
     useEffect(() => {
-        setInitialRecords(items)
+        setInitialRecords(items);
     }, [items]);
-    const [records, setRecords] = useState(initialRecords);
-    const [selectedRecords, setSelectedRecords] = useState<any>([]);
+    const [records, setRecords] = useState(initialRecords); // Data yang ditampilkan
+    const [selectedRecords, setSelectedRecords] = useState<any[]>([]); // Data yang dipilih
 
     // Muat data awal dari localStorage saat komponen pertama kali dirender
     useEffect(() => {
@@ -116,6 +121,7 @@ const RolesList= () => {
      * items 
      */
 
+    // Mapping data dari API agar sesuai dengan kolom yang ditampilkan
     useEffect(() => {
         if (data?.data) {
             const mappedItems = data.data.map((d: any, index: number) => ({
@@ -178,12 +184,14 @@ const RolesList= () => {
      * tools 
      */
 
+    // Fungsi untuk kapitalisasi huruf pertama
     function capitalizeFirstLetter(str: string): string {
         return str.charAt(0).toUpperCase() + str.slice(1);
     }
 
     return (
         <div>
+            {/* Header dan aksi */}
             <div className="flex items-center justify-between flex-wrap gap-4 mb-5">
                 <h2 className="text-xl">{capitalizeFirstLetter(entity)}</h2>
                 <div className="flex sm:flex-row flex-col sm:items-center sm:gap-3 gap-4 w-full sm:w-auto">
@@ -201,9 +209,11 @@ const RolesList= () => {
                     </div>
                 </div>
             </div>
+            {/* Tabel */}
             <div className="panel px-0 border-white-light dark:border-[#1b2e4b]">
                 <div className="invoice-table">
                     <div className="mb-4.5 px-5 flex md:items-center md:flex-row flex-col gap-5">
+                            {/* Dropdown kolom */}
                             <div className="flex md:items-center md:flex-row flex-col gap-5">
                                 <div className="dropdown">
                                     <Dropdown
@@ -249,11 +259,13 @@ const RolesList= () => {
                                 </div>
                             </div>
 
+                        {/* Input pencarian */}
                         <div className="ltr:ml-auto rtl:mr-auto">
                             <input type="text" className="form-input w-auto" placeholder="Search..." value={search} onChange={(e) => setSearch(e.target.value)} />
                         </div>
                     </div>
 
+                    {/* Tabel utama */}
                     <div className="datatables pagination-padding">
                         <DataTable
                             className="whitespace-nowrap table-hover invoice-table"
@@ -288,16 +300,16 @@ const RolesList= () => {
                                     hidden: hideCols.includes('created_at'),
                                 },
                             ]}
-                            highlightOnHover
-                            totalRecords={total}
-                            recordsPerPage={pageSize}
-                            page={page}
-                            onPageChange={(p) => setPage(p)}
-                            sortStatus={sortStatus}
-                            onSortStatusChange={setSortStatus}
-                            selectedRecords={selectedRecords}
-                            onSelectedRecordsChange={setSelectedRecords}
-                            paginationText={({ from, to, totalRecords }) => `Showing  ${from} to ${to} of ${totalRecords} entries`}
+                            highlightOnHover // Efek hover saat mouse di atas baris
+                            totalRecords={total} // Total jumlah data
+                            recordsPerPage={pageSize} // jumlah data per halaman
+                            page={page} // halaman saat ini
+                            onPageChange={(p) => setPage(p)} // update halaman ketika pindah
+                            sortStatus={sortStatus} // Status sorting saat ini
+                            onSortStatusChange={setSortStatus} // Fungsi untuk mengatur sorting
+                            selectedRecords={selectedRecords} // data yang dipilih (checkbox)
+                            onSelectedRecordsChange={setSelectedRecords} // update selected
+                            paginationText={({ from, to, totalRecords }) => `Showing  ${from} to ${to} of ${totalRecords} entries`} // teks pagination
                         />
                     </div>
                 </div>

@@ -14,17 +14,18 @@ const CustomersForm = () => {
      * tools 
      */
 
-    const location = useLocation();
-    const pathnames = location.pathname.split('/').filter((x) => x);
-    const storeId = pathnames[0];
-    const entity = pathnames[1];
+    const location = useLocation(); // Hook untuk mengetahui lokasi URL saat ini
+    const pathnames = location.pathname.split('/').filter((x) => x); // Pisahkan path URL menjadi array
+    const storeId = pathnames[0]; // Ambil storeId dari URL
+    const entity = pathnames[1]; // Ambil entitas dari URL
 
-    const dispatch = useDispatch();
+    const dispatch = useDispatch(); // Inisialisasi dispatch Redux
 
     useEffect(() => {
-        dispatch(setPageTitle('File Upload Preview'));
+        dispatch(setPageTitle('File Upload Preview')); // Set judul halaman
     });
 
+    // Fungsi untuk kapitalisasi huruf pertama
     function capitalizeFirstLetter(str: string): string {
         return str.charAt(0).toUpperCase() + str.slice(1);
     }
@@ -33,9 +34,11 @@ const CustomersForm = () => {
      * defenitions 
      */
 
-    const navigate = useNavigate();
-    const { id } = useParams();  
+    const navigate = useNavigate(); // Untuk berpindah halaman
+    const { id } = useParams();  // Ambil parameter ID dari URL
+    // Query untuk ambil data customer jika ada ID
     const { data } = useGetSingleCustomersQuery({storeId, id}, { skip: !id });  // Menarik data jika ID ada
+    // Mutasi untuk update dan store customer
     const [updateCustomer, { isSuccess: isUpdateSuccess, error: errorUpdate }] = useUpdateCustomerMutation();
     const [storeCustomer, {data: dataStore, error: errorStore, isSuccess: isSuccessStore }] = useStoreCustomerMutation()
 
@@ -43,6 +46,7 @@ const CustomersForm = () => {
      * validation 
      */
 
+    // Skema validasi Yup
     const schema = Yup.object().shape({
         name: Yup.string()
             .required("Name is required")
@@ -73,10 +77,11 @@ const CustomersForm = () => {
         address: Yup.string()
             .required("Address is required"),  
         photo: Yup.mixed()
-            // .required("Image is required")
+            // File type validation untuk gambar
             .test("fileType", "Unsupported File Format", (value) =>
                 value ? ["image/jpg", "image/jpeg", "image/png"].includes(value.type) : true
             )
+            // File size validation max 1MB
             .test("fileSize", "File Size is too large. Maximum size is 1MB", (value) =>
                 value ? value.size <= 1024 * 1024 : true  // 1024 KB = 1 MB
             ),
@@ -88,7 +93,7 @@ const CustomersForm = () => {
 
     // Menangani formik
     const formik = useFormik({
-        enableReinitialize: true,
+        enableReinitialize: true, // Re-inisialisasi jika nilai awal berubah
         initialValues: {
             name: data?.name || '',
             shopname: data?.shopname || '',
@@ -105,6 +110,7 @@ const CustomersForm = () => {
         },
         validationSchema: schema,
         onSubmit: async (values) => {
+            // Buat FormData agar bisa kirim file
             const formData = new FormData();
             formData.append("name", values.name);
             formData.append("shopname", values.shopname);
@@ -117,10 +123,12 @@ const CustomersForm = () => {
             formData.append("city", values.city);
             formData.append("address", values.address);
 
+            // Tambahkan file gambar jika ada
             if (values.photo) {
                 formData.append("photo", values.photo); 
             }
 
+             // Update jika ID ada, kalau tidak, buat baru
             if (id) {
                 formData.append("_method", "PUT");
                 await updateCustomer({storeId: storeId, id, data: formData});
@@ -133,18 +141,20 @@ const CustomersForm = () => {
     const { values, errors, touched, handleChange, handleSubmit } = formik;
 
     // image
-    const [images, setImages] = useState<any>([]);
-    const maxNumber = 69;
+    const [images, setImages] = useState<any>([]); // State untuk gambar preview
+    const maxNumber = 69;  // Limit jumlah gambar
 
+    // Fungsi saat gambar diubah atau diupload
     const onChange = (imageList: ImageListType, addUpdateIndex: number[] | undefined) => {
     setImages(imageList as never[]);
         if (imageList.length > 0) {
-            formik.setFieldValue("photo", imageList[0].file);
+            formik.setFieldValue("photo", imageList[0].file); // Set field Formik
         } else {
             formik.setFieldValue("photo", null);
         }
     };
 
+    // Jika data customer memiliki gambar, set gambar awal
     useEffect(() => {
         if (data && data.photo) {
             const initialImage = {
@@ -161,29 +171,32 @@ const CustomersForm = () => {
 
     useEffect(() => {
         if (isSuccessStore) {
-            toast.success("Create Successfully")
+            toast.success("Create Successfully") // Notifikasi sukses create
             navigate(`/${storeId}/${entity}/${dataStore?.id}`);
         }
         if (isUpdateSuccess) {
-            toast.success("Update Successfully")
+            toast.success("Update Successfully") // Notifikasi sukses update
         }
         if (errorStore) {
             const errorData = errorStore as any;
-            toast.error(errorData.data.message);
+            toast.error(errorData.data.message); // Notifikasi error saat create
         }
         if (errorUpdate) {
             const errorData = errorStore as any;
-            toast.error(errorData.data.message);
+            toast.error(errorData.data.message); // Notifikasi error saat update
         }
     }, [isSuccessStore, isUpdateSuccess, errorStore, errorUpdate])
 
     return (
+        // Form customer dengan handler `handleSubmit` ketika form disubmit
         <form onSubmit={handleSubmit} >
+            {/* Header dan button save */}
             <div className="flex items-center justify-between flex-wrap gap-4 mb-5">
                 <h2 className="text-xl">{capitalizeFirstLetter(entity)}</h2>
                 <div className="flex sm:flex-row flex-col sm:items-center sm:gap-3 gap-4 w-full sm:w-auto">
                     <div className="relative">
                         <div className="flex items-center gap-2">
+                            {/* button save */}
                             <button type="submit" className="btn btn-primary">
                                 Save 
                             </button>
@@ -191,13 +204,16 @@ const CustomersForm = () => {
                     </div>
                 </div>
             </div>
+            {/* Grid */}
             <div className="grid lg:grid-cols-6 grid-cols-1 gap-6">
+                {/* Kolom untuk upload gambar */}
                 <div className="col-span-1 lg:col-span-2">
                     <div className="panel" id="single_file">
                         <div className="mb-5">
                             <div className="custom-file-container" data-upload-id="myFirstImage">
                                 <div className="label-container">
                                     <label>Upload </label>
+                                    {/* button untuk menghapus gambar yang dipilih */}
                                     <button
                                         type="button"
                                         className="custom-file-container__image-clear"
@@ -209,6 +225,7 @@ const CustomersForm = () => {
                                         ×
                                     </button>
                                 </div>
+                                {/* Input file tersembunyi, dikontrol oleh ImageUploading */}
                                 <label className="custom-file-container__custom-file"></label>
                                 <input
                                     hidden
@@ -218,7 +235,7 @@ const CustomersForm = () => {
                                     accept="image/*"
                                     onChange={(event: any) => {
                                         const file = event.currentTarget.files[0];
-                                        formik.setFieldValue("photo", file);
+                                        formik.setFieldValue("photo", file); // Simpan file ke formik
 
                                         // Set gambar baru ke pratinjau
                                         const reader = new FileReader();
@@ -229,13 +246,16 @@ const CustomersForm = () => {
                                     }}
                                     className="custom-file-container__custom-file__custom-file-input"
                                 />
+                                {/* Validasi formik jika ada error */}
                                 {formik.errors.photo && formik.touched.photo && (
                                     <div className="text-red-500 text-sm mt-1">{formik.errors.photo}</div>
                                 )}
                                 <input type="hidden" name="MAX_FILE_SIZE" value="10485760" />
+                                {/* Komponen untuk manajemen upload gambar */}
                                 <ImageUploading value={images} onChange={onChange} maxNumber={maxNumber}>
                                     {({ imageList, onImageUpload, onImageRemoveAll, onImageUpdate, onImageRemove, isDragging, dragProps }) => (
                                         <div className="upload__image-wrapper">
+                                            {/* button pilih file */}
                                             <button
                                                 type="button"
                                                 className="custom-file-container__custom-file__custom-file-control"
@@ -245,6 +265,7 @@ const CustomersForm = () => {
                                             >
                                                 Choose File...
                                             </button>
+                                            {/* Tampilkan pratinjau gambar yang dipilih */}
                                             {imageList.map((image, index) => (
                                                 <div key={index} className="custom-file-container__image-preview relative">
                                                     <img src={image.dataURL} alt="img" className="m-auto" />
@@ -254,19 +275,20 @@ const CustomersForm = () => {
                                         </div>
                                     )}
                                 </ImageUploading>
+                                {/* Gambar default jika belum ada gambar di-upload */}
                                 {images.length === 0 ? <img src="/assets/images/file-preview.svg" className="max-w-md w-full m-auto" alt="" /> : ''}
                             </div>
                         </div>
                     </div>
                 </div>
 
-                {/* <div className="pt-5 grid lg:grid-cols-2 grid-cols-1 gap-6"> */}
                 <div className="grid lg:grid-cols-1 grid-cols-1 gap-6 col-span-1 lg:col-span-4">
                     {/* Grid */}
                     <div className="panel" id="forms_grid">
                         <div className="mb-5">
                             <div className="space-y-5">
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    {/* Nama */}
                                     <div>
                                         <label htmlFor="name">Name<span className="text-danger">*</span></label>
                                         <input
@@ -282,6 +304,7 @@ const CustomersForm = () => {
                                         )}
                                     </div>
 
+                                    {/* Nama toko */}
                                     <div>
                                         <label htmlFor="name">Shop Name<span className="text-danger">*</span></label>
                                         <input
@@ -297,6 +320,7 @@ const CustomersForm = () => {
                                         )}
                                     </div>
 
+                                    {/* Email */}
                                     <div>
                                         <label htmlFor="email">Email<span className="text-danger">*</span></label>
                                         <input
@@ -312,6 +336,7 @@ const CustomersForm = () => {
                                         )}
                                     </div>
 
+                                    {/* Nomor telepon */}
                                     <div>
                                         <label htmlFor="phone">Phone<span className="text-danger">*</span></label>
                                         <input
@@ -327,6 +352,7 @@ const CustomersForm = () => {
                                         )}
                                     </div>
 
+                                    {/* Nama pemilik rekening */}
                                     <div>
                                         <label htmlFor="account_holder">Account Holder</label>
                                         <input
@@ -342,6 +368,7 @@ const CustomersForm = () => {
                                         )}
                                     </div>
 
+                                    {/* Pilihan nama bank */}
                                     <div>
                                         <label htmlFor="bank_name">Bank Name</label>
                                         <select
@@ -362,6 +389,7 @@ const CustomersForm = () => {
                                         )}
                                     </div>
 
+                                    {/* Nomor rekening */}
                                     <div>
                                         <label htmlFor="account_number">Account Number</label>
                                         <input
@@ -377,6 +405,7 @@ const CustomersForm = () => {
                                         )}
                                     </div>
 
+                                    {/* Cabang bank */}
                                     <div>
                                         <label htmlFor="bank_branch">Bank Branch</label>
                                         <input
@@ -392,6 +421,7 @@ const CustomersForm = () => {
                                         )}
                                     </div>
 
+                                    {/* Kota */}
                                     <div>
                                         <label htmlFor="city">City<span className="text-danger">*</span></label>
                                         <input
@@ -407,6 +437,7 @@ const CustomersForm = () => {
                                         )}
                                     </div>
 
+                                    {/* Alamat (textarea) */}
                                     <div className="sm:col-span-2">
                                         <label htmlFor="address">Address<span className="text-danger">*</span></label>
                                         <textarea 

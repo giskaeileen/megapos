@@ -7,24 +7,29 @@ import { useState, useEffect } from "react";
 import dayjs from "dayjs";
 import weekOfYear from "dayjs/plugin/weekOfYear";
 import { formatNumber } from "../../components/tools";
+
 dayjs.extend(weekOfYear);
 
+// Komponen utama untuk menampilkan chart laporan produk teratas
 const ChartReportTopProduct: React.FC<{ allOrders: any[] }> = ({ allOrders }) => {
     const isDark = useSelector((state: IRootState) => state.themeConfig.theme === 'dark' || state.themeConfig.isDarkMode);
     const isRtl = useSelector((state: IRootState) => state.themeConfig.rtlClass) === 'rtl' ? true : false;
 
-    // const [chartData, setChartData] = useState({ categories: [], series: [] });
+    // Interface untuk struktur data chart
     interface ChartData {
         categories: string[];
         series: { name: string; data: number[] }[];
     }
 
+    // State untuk menyimpan data chart batang
     const [chartData, setChartData] = useState<ChartData>({
         categories: [],
         series: [],
     });
+    // State untuk menyimpan jenis filter waktu (Weekly, Monthly, Yearly)
     const [filterType, setFilterType] = useState("Weekly");
 
+    // Fungsi untuk mengelompokkan data berdasarkan kriteria tertentu
     const groupBy = (data: any, key: any) => {
         return data.reduce((acc: any, item: any) => {
             const groupKey = key(item);
@@ -37,6 +42,7 @@ const ChartReportTopProduct: React.FC<{ allOrders: any[] }> = ({ allOrders }) =>
         }, {});
     };
 
+    // Fungsi untuk memfilter dan membentuk data chart berdasarkan jenis waktu
     const filterData = (orders: any, type: any) => {
         const now = dayjs();
         let filteredOrders = orders.filter((order: any) => {
@@ -75,16 +81,19 @@ const ChartReportTopProduct: React.FC<{ allOrders: any[] }> = ({ allOrders }) =>
         };
     };
 
+    // useEffect untuk memperbarui chart saat data order atau filter berubah
     useEffect(() => {
         if (allOrders.length > 0) {
             setChartData(filterData(allOrders, filterType));
         }
     }, [allOrders, filterType]);
 
+    // Fungsi untuk menangani perubahan filter waktu
     const handleChartUpdate = (type: any) => {
         setFilterType(type);
     };
 
+    // Konfigurasi dan data untuk chart batang
     const columnChart = {
         series: chartData.series,
         options: {
@@ -100,6 +109,7 @@ const ChartReportTopProduct: React.FC<{ allOrders: any[] }> = ({ allOrders }) =>
         },
     };
 
+    // State loading untuk menampilkan spinner saat data masih diproses
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -110,8 +120,7 @@ const ChartReportTopProduct: React.FC<{ allOrders: any[] }> = ({ allOrders }) =>
 
     // =======
 
-    // const donutChart = getDonutChartData(allOrders);
-
+    // Fungsi untuk menghasilkan data chart donat berdasarkan status pembayaran
     const getDonutChartData = (orders: any) => {
         // Kelompokkan orders berdasarkan kategori
         const categoryTotals = orders.reduce((acc: Record<string, number>, order: any) => {
@@ -158,6 +167,7 @@ const ChartReportTopProduct: React.FC<{ allOrders: any[] }> = ({ allOrders }) =>
 
     return (
         <div className="grid xl:grid-cols-3 gap-6 mb-6">
+            {/* Panel untuk chart batang */}
             <div className="panel p-0 xl:col-span-2">
                 <div className="flex items-center justify-between dark:text-white-light mb-2 m-4">
                     <p className="text-lg dark:text-white-light/90">
@@ -174,11 +184,13 @@ const ChartReportTopProduct: React.FC<{ allOrders: any[] }> = ({ allOrders }) =>
                     </div>
                 </div>
 
+                {/* Tampilkan spinner saat loading */}
                 {loading ? (
                     <div className="min-h-[325px] grid place-content-center bg-white-light/30 dark:bg-dark dark:bg-opacity-[0.08] ">
                         <span className="animate-spin border-2 border-black dark:border-white !border-l-transparent  rounded-full w-5 h-5 inline-flex"></span>
                     </div>
                 ) : (
+                    // Chart batang ditampilkan jika data sudah tersedia
                     <ReactApexChart 
                         series={columnChart.series} 
                         options={columnChart.options} 
@@ -189,17 +201,20 @@ const ChartReportTopProduct: React.FC<{ allOrders: any[] }> = ({ allOrders }) =>
                 )}
             </div>
 
+            {/* Panel untuk chart donat */}
             <div className="panel p-0">
                 <div className="flex items-center justify-between dark:text-white-light mb-2 m-4">
                     <p className="text-lg dark:text-white-light/90">
                         Total Profit <span className="text-primary ml-2">{formatNumber(allOrders.reduce((acc, order) => acc + order.pay, 0))}</span>
                     </p>
                 </div>
+                {/* Tampilkan spinner saat loading */}
                 {loading ? (
                     <div className="min-h-[325px] grid place-content-center bg-white-light/30 dark:bg-dark dark:bg-opacity-[0.08] ">
                         <span className="animate-spin border-2 border-black dark:border-white !border-l-transparent  rounded-full w-5 h-5 inline-flex"></span>
                     </div>
                 ) : (
+                    // Chart donat ditampilkan jika data sudah tersedia
                     <ReactApexChart 
                         series={donutChart.series} 
                         options={donutChart.options} 

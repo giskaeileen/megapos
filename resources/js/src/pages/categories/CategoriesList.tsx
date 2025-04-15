@@ -57,7 +57,7 @@ const CategoriesList = () => {
     const [records, setRecords] = useState(initialRecords);
     const [selectedRecords, setSelectedRecords] = useState<any>([]);
 
-    // data 
+    // Ambil data 
     const { data, refetch } = useGetCategoriesQuery(
         { 
             storeId: storeId,
@@ -70,6 +70,7 @@ const CategoriesList = () => {
         },
         { refetchOnMountOrArgChange: true } 
     );
+    // Kolom tabel
     const cols = [
         { accessor: 'no', title: 'No' },
         { accessor: 'name', title: 'Name' },
@@ -81,6 +82,7 @@ const CategoriesList = () => {
      * search 
      */
 
+    // Simpan perubahan search ke localStorage
     useEffect(() => {
         localStorage.setItem(`${entity}_search`, search);
     }, [search]);
@@ -89,6 +91,7 @@ const CategoriesList = () => {
      * filter 
      */
 
+    // Simpan perubahan filter ke localStorage
     useEffect(() => {
         localStorage.setItem(entityFilterColumn, selectedColumn);
         localStorage.setItem(entityFilterValue, filterValue);
@@ -98,10 +101,12 @@ const CategoriesList = () => {
      * sort 
      */
 
+    // Simpan perubahan sorting ke localStorage
     useEffect(() => {
         localStorage.setItem(`${entitySort}`, JSON.stringify(sortStatus));
     }, [sortStatus]);
 
+    // Ambil sort dari localStorage saat pertama render
     useEffect(() => {
         const storedSort = localStorage.getItem(`${entitySort}`);
         if (storedSort) {
@@ -113,6 +118,7 @@ const CategoriesList = () => {
      * delete 
      */
 
+    // Hapus data
     const deleteRow = () => {
         deleteConfirmation(selectedRecords, deleteCategory, refetch, storeId);
     };
@@ -121,6 +127,7 @@ const CategoriesList = () => {
      * page 
      */
 
+    // Atur ulang record saat data item berubah
     useEffect(() => {
         setInitialRecords(items)
     }, [items]);
@@ -149,6 +156,7 @@ const CategoriesList = () => {
      * items 
      */
 
+    // Mapping data dari API agar sesuai dengan kolom
     useEffect(() => {
         if (data?.data) {
             const mappedItems = data.data.map((d: any, index: number) => {
@@ -216,15 +224,18 @@ const CategoriesList = () => {
 
     return (
         <div>
+            {/* Header dengan judul dan button Delete & create */}
             <div className="flex items-center justify-between flex-wrap gap-4 mb-5">
                 <h2 className="text-xl">{capitalizeFirstLetter(entity)}</h2>
                 <div className="flex sm:flex-row flex-col sm:items-center sm:gap-3 gap-4 w-full sm:w-auto">
                     <div className="relative">
                         <div className="flex items-center gap-2">
+                            {/* button hapus */}
                             <button type="button" className="btn btn-danger gap-2" onClick={() => deleteRow()}>
                                 <IconTrashLines />
                                 Delete
                             </button>
+                            {/* button menuju halaman create */}
                             <Link to={`/${storeId}/${entity}/create`} className="btn btn-primary gap-2">
                                 <IconPlus />
                                 Add New
@@ -233,10 +244,13 @@ const CategoriesList = () => {
                     </div>
                 </div>
             </div>
+            {/* Panel tabel */}
             <div className="panel px-0 border-white-light dark:border-[#1b2e4b]">
                 <div className="invoice-table">
+                    {/* Filter dan dropdown */}
                     <div className="mb-4.5 px-5 flex md:items-center md:flex-row flex-col gap-5">
                         <div className="flex md:items-center md:flex-row flex-col gap-5">
+                            {/* Dropdown untuk memilih kolom yang ditampilkan/disembunyikan */}
                             <div className="dropdown">
                                 <Dropdown
                                     placement={`${isRtl ? 'bottom-end' : 'bottom-start'}`}
@@ -255,19 +269,19 @@ const CategoriesList = () => {
                                                     key={i}
                                                     className="flex flex-col"
                                                     onClick={(e) => {
-                                                        e.stopPropagation();
+                                                        e.stopPropagation(); // Mencegah dropdown tertutup saat klik checkbox
                                                     }}
                                                 >
                                                     <div className="flex items-center px-4 py-1">
                                                         <label className="cursor-pointer mb-0">
                                                             <input
                                                                 type="checkbox"
-                                                                checked={!hideCols.includes(col.accessor)}
+                                                                checked={!hideCols.includes(col.accessor)} // Status checkbox berdasarkan kolom yang disembunyikan
                                                                 className="form-checkbox"
                                                                 defaultValue={col.accessor}
                                                                 onChange={(event: any) => {
-                                                                    setHideCols(event.target.value);
-                                                                    showHideColumns(col.accessor);
+                                                                    setHideCols(event.target.value); // Atur nilai hideCols saat checkbox berubah
+                                                                    showHideColumns(col.accessor); // Panggil fungsi untuk tampil/sembunyikan kolom
                                                                 }}
                                                             />
                                                             <span className="ltr:ml-2 rtl:mr-2">{col.title}</span>
@@ -283,6 +297,7 @@ const CategoriesList = () => {
 
                         {/* Dropdown Pilih Kolom + Input Filter */}
                         <div className="flex gap-3">
+                            {/* Pilih kolom yang ingin difilter */}
                             <select 
                                 value={selectedColumn} 
                                 onChange={(e) => setSelectedColumn(e.target.value)}
@@ -290,13 +305,14 @@ const CategoriesList = () => {
                             >
                                 <option value="">Column Filter</option>
                                 {cols
-                                    .filter(col => col.accessor !== "no" && col.accessor !== "photo" && col.accessor !== "created_at") // Hilangkan "No" & "Created At"
+                                    .filter(col => col.accessor !== "no" && col.accessor !== "photo" && col.accessor !== "created_at") / Hilangkan "No" & "Created At"
                                     .map(col => (
                                         <option key={col.accessor} value={col.accessor}>{col.title}</option>
                                     ))
                                 }
                             </select>
 
+                            {/* Input untuk nilai filter */}
                             <input 
                                 type="text"
                                 value={filterValue}
@@ -305,29 +321,32 @@ const CategoriesList = () => {
                                 className="form-input"
                             />
                         </div>
-
+                        
+                        {/* Input pencarian umum */}
                         <div className="ltr:ml-auto rtl:mr-auto">
                             <input type="text" className="form-input w-auto" placeholder="Search..." value={search} onChange={(e) => setSearch(e.target.value)} />
                         </div>
                     </div>
 
+                    {/* Tabel */}
                     <div className="datatables pagination-padding">
                         <DataTable
                             className="whitespace-nowrap table-hover invoice-table"
-                            records={records}
+                            records={records} // Data yang akan ditampilkan
                             columns={[
                                 {
                                     accessor: 'no',
-                                    hidden: hideCols.includes('no'),
+                                    hidden: hideCols.includes('no'), // Sembunyikan kolom jika termasuk dalam hideCols
                                 },
                                 {
                                     accessor: 'name',
                                     sortable: true,
-                                    hidden: hideCols.includes('name'),
+                                    hidden: hideCols.includes('name'), // Sembunyikan kolom jika termasuk dalam hideCols
                                     render: ({ name, id}) => {
                                         return (
                                             <div className="flex items-center font-semibold">
                                                 <div>
+                                                    {/* Link menuju detail entitas */}
                                                     <a
                                                         href={`/${storeId}/${entity}/${id}`}
                                                         className="hover:underline"
@@ -350,16 +369,16 @@ const CategoriesList = () => {
                                     hidden: hideCols.includes('created_at'),
                                 },
                             ]}
-                            highlightOnHover
-                            totalRecords={total}
-                            recordsPerPage={pageSize}
-                            page={page}
-                            onPageChange={(p) => setPage(p)}
-                            sortStatus={sortStatus}
-                            onSortStatusChange={setSortStatus}
-                            selectedRecords={selectedRecords}
-                            onSelectedRecordsChange={setSelectedRecords}
-                            paginationText={({ from, to, totalRecords }) => `Showing  ${from} to ${to} of ${totalRecords} entries`}
+                            highlightOnHover // Efek hover pada baris
+                            totalRecords={total} // Total seluruh data (untuk pagination)
+                            recordsPerPage={pageSize} // Jumlah data per halaman
+                            page={page} // Halaman saat ini
+                            onPageChange={(p) => setPage(p)} // Fungsi ubah halaman
+                            sortStatus={sortStatus} // Status pengurutan kolom
+                            onSortStatusChange={setSortStatus} // Ubah pengurutan kolom
+                            selectedRecords={selectedRecords} // Data yang dipilih (checkbox)
+                            onSelectedRecordsChange={setSelectedRecords} // Atur data yang dipilih
+                            paginationText={({ from, to, totalRecords }) => `Showing  ${from} to ${to} of ${totalRecords} entries`} // Format teks pagination
                         />
                     </div>
                 </div>

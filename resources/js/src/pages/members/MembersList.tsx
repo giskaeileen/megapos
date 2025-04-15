@@ -56,7 +56,7 @@ const MembersList = () => {
     const [records, setRecords] = useState(initialRecords);
     const [selectedRecords, setSelectedRecords] = useState<any>([]);
 
-    // data 
+    // Ambil data 
     const { data, refetch } = useGetMembersQuery(
         { 
             storeId: storeId,
@@ -69,6 +69,7 @@ const MembersList = () => {
         },
         { refetchOnMountOrArgChange: true } 
     );
+    // Definisi kolom tabel
     const cols = [
         { accessor: 'no', title: 'No' },
         { accessor: 'name', title: 'Name' },
@@ -84,6 +85,7 @@ const MembersList = () => {
      * search 
      */
 
+    // Simpan perubahan search ke localStorage
     useEffect(() => {
         localStorage.setItem(`${entity}_search`, search);
     }, [search]);
@@ -92,6 +94,7 @@ const MembersList = () => {
      * filter 
      */
 
+    // Simpan perubahan filter ke localStorage
     useEffect(() => {
         localStorage.setItem(entityFilterColumn, selectedColumn);
         localStorage.setItem(entityFilterValue, filterValue);
@@ -101,10 +104,12 @@ const MembersList = () => {
      * sort 
      */
 
+    // Simpan perubahan sorting ke localStorage
     useEffect(() => {
         localStorage.setItem(`${entitySort}`, JSON.stringify(sortStatus));
     }, [sortStatus]);
 
+    // Ambil sort dari localStorage saat pertama render
     useEffect(() => {
         const storedSort = localStorage.getItem(`${entitySort}`);
         if (storedSort) {
@@ -116,6 +121,7 @@ const MembersList = () => {
      * delete 
      */
 
+    // Hapus data
     const deleteRow = () => {
         deleteConfirmation(selectedRecords, deleteMembers, refetch, storeId);
     };
@@ -124,6 +130,7 @@ const MembersList = () => {
      * page 
      */
 
+    // Atur ulang record saat data item berubah
     useEffect(() => {
         setInitialRecords(items)
     }, [items]);
@@ -152,6 +159,7 @@ const MembersList = () => {
      * items 
      */
 
+    // Mapping data dari API agar sesuai dengan kolom
     useEffect(() => {
         if (data?.data) {
             const mappedItems = data.data.map((d: any, index: number) => {
@@ -224,11 +232,14 @@ const MembersList = () => {
 
     return (
         <div>
+            {/* Header dengan judul dan button aksi */}
             <div className="flex items-center justify-between flex-wrap gap-4 mb-5">
                 <h2 className="text-xl">{capitalizeFirstLetter(entity)}</h2>
+                {/* button aksi */}
                 <div className="flex sm:flex-row flex-col sm:items-center sm:gap-3 gap-4 w-full sm:w-auto">
                     <div className="relative">
                         <div className="flex items-center gap-2">
+                            {/* button untuk menghapus data */}
                             <button type="button" className="btn btn-danger gap-2" onClick={() => deleteRow()}>
                                 <IconTrashLines />
                                 Delete
@@ -241,10 +252,13 @@ const MembersList = () => {
                     </div>
                 </div>
             </div>
+            {/* Panel tabel */}
             <div className="panel px-0 border-white-light dark:border-[#1b2e4b]">
                 <div className="invoice-table">
+                    {/* Kolom filter dan pencarian */}
                     <div className="mb-4.5 px-5 flex md:items-center md:flex-row flex-col gap-5">
                         <div className="flex md:items-center md:flex-row flex-col gap-5">
+                            {/* Dropdown untuk memilih kolom yang ingin ditampilkan */}
                             <div className="dropdown">
                                 <Dropdown
                                     placement={`${isRtl ? 'bottom-end' : 'bottom-start'}`}
@@ -256,20 +270,22 @@ const MembersList = () => {
                                         </>
                                     }
                                 >
+                                    {/* Daftar kolom yang bisa di-toggle tampil/sembunyi */}
                                     <ul className="!min-w-[140px]">
                                         {cols
-                                            .filter(col => col.accessor !== "photo" )
+                                            .filter(col => col.accessor !== "photo" ) // Hilangkan kolom 'photo' dari toggle
                                             .map((col, i) => {
                                             return (
                                                 <li
                                                     key={i}
                                                     className="flex flex-col"
                                                     onClick={(e) => {
-                                                        e.stopPropagation();
+                                                        e.stopPropagation(); // Hindari menutup dropdown saat klik checkbox
                                                     }}
                                                 >
                                                     <div className="flex items-center px-4 py-1">
                                                         <label className="cursor-pointer mb-0">
+                                                            {/* Checkbox untuk menampilkan/sembunyikan kolom */}
                                                             <input
                                                                 type="checkbox"
                                                                 checked={!hideCols.includes(col.accessor)}
@@ -277,8 +293,7 @@ const MembersList = () => {
                                                                 defaultValue={col.accessor}
                                                                 onChange={(event: any) => {
                                                                     setHideCols(event.target.value);
-                                                                    // showHideColumns(col.accessor, event.target.checked);
-                                                                    showHideColumns(col.accessor);
+                                                                    showHideColumns(col.accessor); // Fungsi toggle kolom
                                                                 }}
                                                             />
                                                             <span className="ltr:ml-2 rtl:mr-2">{col.title}</span>
@@ -294,6 +309,7 @@ const MembersList = () => {
 
                         {/* Dropdown Pilih Kolom + Input Filter */}
                         <div className="flex gap-3">
+                            {/* Dropdown pilih kolom yang ingin difilter */}
                             <select 
                                 value={selectedColumn} 
                                 onChange={(e) => setSelectedColumn(e.target.value)}
@@ -308,6 +324,7 @@ const MembersList = () => {
                                 }
                             </select>
 
+                             {/* Input untuk value filter berdasarkan kolom terpilih */}
                             <input 
                                 type="text"
                                 value={filterValue}
@@ -317,15 +334,17 @@ const MembersList = () => {
                             />
                         </div>
 
+                        {/* Input pencarian umum */}
                         <div className="ltr:ml-auto rtl:mr-auto">
                             <input type="text" className="form-input w-auto" placeholder="Search..." value={search} onChange={(e) => setSearch(e.target.value)} />
                         </div>
                     </div>
 
+                    {/* Table */}
                     <div className="datatables pagination-padding">
                         <DataTable
                             className="whitespace-nowrap table-hover invoice-table"
-                            records={records}
+                            records={records} // Data yang akan ditampilkan
                             columns={[
                                 {
                                     accessor: 'no',
@@ -339,6 +358,7 @@ const MembersList = () => {
                                     render: ({ name, id, photo}) => {
                                         return (
                                             <div className="flex items-center font-semibold">
+                                                {/* Foto pengguna */}
                                                 <div className="p-0.5 bg-white-dark/30 rounded-full w-max ltr:mr-2 rtl:ml-2">
                                                     <img
                                                         className="h-8 w-8 rounded-full object-cover"
@@ -384,16 +404,16 @@ const MembersList = () => {
                                     hidden: hideCols.includes('created_at'),
                                 },
                             ]}
-                            highlightOnHover
-                            totalRecords={total}
-                            recordsPerPage={pageSize}
-                            page={page}
-                            onPageChange={(p) => setPage(p)}
-                            sortStatus={sortStatus}
-                            onSortStatusChange={setSortStatus}
-                            selectedRecords={selectedRecords}
-                            onSelectedRecordsChange={setSelectedRecords}
-                            paginationText={({ from, to, totalRecords }) => `Showing  ${from} to ${to} of ${totalRecords} entries`}
+                            highlightOnHover // Efek hover saat mouse di atas baris
+                            totalRecords={total} // Total semua data
+                            recordsPerPage={pageSize}  // Jumlah data per halaman
+                            page={page} // Halaman aktif
+                            onPageChange={(p) => setPage(p)} // Fungsi saat ganti halaman
+                            sortStatus={sortStatus} // Status pengurutan
+                            onSortStatusChange={setSortStatus} // Fungsi ubah pengurutan
+                            selectedRecords={selectedRecords} // Data yang dipilih
+                            onSelectedRecordsChange={setSelectedRecords} // Fungsi ubah data yang dipilih
+                            paginationText={({ from, to, totalRecords }) => `Showing  ${from} to ${to} of ${totalRecords} entries`} // Teks paginasi
                         />
                     </div>
                 </div>

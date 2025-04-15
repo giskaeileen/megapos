@@ -14,25 +14,39 @@ import NoRecords from '../../components/Layouts/NoRecords';
 import Pagination from '../../components/Pagination';
 import AttributeSelectionModal from './AttributeSelectionModal';
 
+// Tipe props yang dikirim ke komponen ini
 type Props = {
-    filteredItems: any;
-    handlePageChange: any;
-    page: any;
-    total: any;
-    pageSize: any;
-    addPos: any;
-    isOpen: any;
+    filteredItems: any;              // Data produk yang telah difilter
+    handlePageChange: any;           // Fungsi untuk mengubah halaman
+    page: any;                       // Halaman saat ini
+    total: any;                      // Total item
+    pageSize: any;                   // Jumlah item per halaman
+    addPos: any;                     // Fungsi untuk menambahkan item ke POS/cart
+    isOpen: any;                     // Menentukan apakah sidebar POS sedang terbuka
 };
 
+// Komponen utama POS Product Grid
 const PosProductGrid: FC<Props> = ({ filteredItems, handlePageChange, page, total, pageSize, addPos, isOpen }) => {
+    // Ambil konfigurasi tema (misalnya RTL/LTR)
     const themeConfig = useSelector((state: IRootState) => state.themeConfig);
+
+    // State untuk membuka modal variasi produk
     const [openModal, setOpenModal] = useState<any>(false);
-    const [currentVariations, setCurrentVariations] = useState<any[]>([]); // State untuk menyimpan variations
+    // State menyimpan semua variasi dari produk saat ini
+    const [currentVariations, setCurrentVariations] = useState<any[]>([]);
+    // State menyimpan atribut yang telah dipilih pengguna
     const [selectedAttributes, setSelectedAttributes] = useState<Record<string, any>>({});
+    // Menyimpan harga yang telah dipilih sesuai variasi
     const [selectedPrice, setSelectedPrice] = useState(null);
+    // Menyimpan data variasi yang cocok dengan atribut yang dipilih
     const [currentVariation, setCurrentVariation] = useState<any>(null);
+    // Menyimpan informasi produk yang sedang dipilih
     const [variation, setVariation] = useState<Record<string, any>>({});
 
+    /**
+     * Fungsi untuk menangani perubahan pilihan atribut
+     * Digunakan saat user memilih kombinasi atribut untuk produk
+     */
     const handleAttributeChange = (attributeId: string, value: string | number) => {
         const updatedAttributes: Record<string, string | number> = { ...selectedAttributes, [attributeId]: value };
         setSelectedAttributes(updatedAttributes);
@@ -55,6 +69,7 @@ const PosProductGrid: FC<Props> = ({ filteredItems, handlePageChange, page, tota
 
     return (
         <div>
+            {/* Jika ada produk, tampilkan grid */}
             {filteredItems?.length !== 0 ? (
                 <div
                     className={`grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 ${
@@ -63,7 +78,7 @@ const PosProductGrid: FC<Props> = ({ filteredItems, handlePageChange, page, tota
                 >
                     {Array.isArray(filteredItems) &&
                         filteredItems.map((d: any) => {
-                            // Kumpulkan gambar dari variasi yang valid
+                            // Ambil gambar dari variasi yang valid
                             let validImages = d.product_variants.map((variation: any) => variation.product_image).filter((image: string | null) => image);
 
                             validImages = [
@@ -75,7 +90,7 @@ const PosProductGrid: FC<Props> = ({ filteredItems, handlePageChange, page, tota
                                 ...validImages,
                             ];
 
-                            // Harga termurah dari variasi produk
+                            // Ambil harga termurah dari variasi produk
                             const minPrice = d.product_variants.reduce((min: number, variation: any) => {
                                 return variation.price < min ? variation.price : min;
                             }, Infinity);
@@ -83,6 +98,7 @@ const PosProductGrid: FC<Props> = ({ filteredItems, handlePageChange, page, tota
                             return (
                                 <div className="bg-white dark:bg-[#1c232f] rounded-md overflow-hidden text-center shadow relative" key={d.id}>
                                     <div>
+                                        {/* Carousel gambar produk */}
                                         <div className="bg-white/40 rounded-t-md bg-center bg-cover pb-0 bg-">
                                             <Swiper
                                                 modules={[Navigation, Pagination]}
@@ -107,6 +123,7 @@ const PosProductGrid: FC<Props> = ({ filteredItems, handlePageChange, page, tota
                                                     )}
                                                 </div>
 
+                                                {/* Tombol navigasi carousel */}
                                                 <button className="swiper-button-prev-ex1 grid place-content-center ltr:left-2 rtl:right-2 p-1 transition text-primary hover:text-white border border-primary  hover:border-primary hover:bg-primary rounded-full absolute z-[999] top-1/2 -translate-y-1/2">
                                                     <IconCaretDown className="w-5 h-5 rtl:-rotate-90 rotate-90" />
                                                 </button>
@@ -115,12 +132,14 @@ const PosProductGrid: FC<Props> = ({ filteredItems, handlePageChange, page, tota
                                                 </button>
                                             </Swiper>
 
+                                            {/* Tampilkan badge diskon jika tersedia */}
                                             {d.discount_member && (
                                                 <span className={`z-10 absolute top-2 ${d.discount_normal ? 'right-14' : 'right-2'} badge bg-info rounded-full`}>{d.discount_member}%</span>
                                             )}
                                             {d.discount_normal ? <span className="z-10 absolute top-2 right-2 badge bg-warning rounded-full">{d.discount_normal}%</span> : <></>}
                                         </div>
 
+                                        {/* Informasi produk */}
                                         <div className="px-4 pb-3 -mt-14 relative">
                                             <div className="mt-16 grid grid-cols-1 ltr:text-left rtl:text-right">
                                                 <div className="flex items-center">
@@ -130,22 +149,28 @@ const PosProductGrid: FC<Props> = ({ filteredItems, handlePageChange, page, tota
                                                     <div className="truncate text-white-dark">{d.description}</div>
                                                 </div>
 
+                                                {/* Harga dan tombol tambah */}
                                                 <div className="flex justify-between items-center mt-2">
                                                     <div>
+                                                        {/* Harga sebelum diskon */}
                                                         <div className="text-white-dark line-through">{formatRupiah(minPrice)}</div>
+                                                        {/* Harga setelah diskon */}
                                                         <div className="text-primary text-base font-bold">
                                                             {formatRupiah(d.discount_normal ? minPrice - (minPrice * d.discount_normal) / 100 : minPrice)}
                                                         </div>
                                                     </div>
+                                                    {/* button tambah ke POS/cart */}
                                                     <button
                                                         type="button"
                                                         className="btn btn-primary w-10 h-10 p-0 my-1 rounded-full"
                                                         onClick={() => {
                                                             if (d.product_variants.length > 1) {
+                                                                // Buka modal jika ada lebih dari 1 variasi
                                                                 setCurrentVariations(d.product_variants);
                                                                 setOpenModal(true);
                                                                 setVariation(d);
                                                             } else {
+                                                                // Jika hanya 1 variasi langsung tambahkan
                                                                 addPos({ ...d, ...d.product_variants[0] });
                                                             }
                                                         }}
@@ -161,28 +186,52 @@ const PosProductGrid: FC<Props> = ({ filteredItems, handlePageChange, page, tota
                         })}
                 </div>
             ) : (
+                // Jika tidak ada produk
                 <NoRecords />
             )}
 
+            {/* 
+                Komponen Modal untuk pemilihan variasi produk 
+                Ditampilkan ketika produk memiliki lebih dari satu variasi
+            */}
             <AttributeSelectionModal
+                // State boolean yang mengatur apakah modal sedang terbuka
                 openModal={openModal}
+                // Fungsi untuk mengubah status modal (buka/tutup)
                 setOpenModal={setOpenModal}
+                // Daftar semua variasi yang tersedia untuk produk yang dipilih
                 currentVariations={currentVariations}
+                // Objek atribut yang telah dipilih oleh user, disimpan dalam bentuk { attribute_id: value }
                 selectedAttributes={selectedAttributes}
+                // Fungsi handler untuk menangani perubahan pilihan atribut (misal warna, ukuran, dll)
                 handleAttributeChange={handleAttributeChange}
+                // Harga dari variasi yang dipilih berdasarkan atribut yang cocok
                 selectedPrice={selectedPrice}
+                // Fungsi untuk menambahkan produk ke keranjang/POS
                 addPos={addPos}
+                // Produk yang sedang dipilih (informasi dasar seperti nama, deskripsi, diskon, dll)
                 variation={variation}
+                // Setter untuk mereset atribut yang dipilih saat modal dibuka/ditutup
                 setSelectedAttributes={setSelectedAttributes}
+                // Setter untuk mengatur harga variasi terpilih berdasarkan atribut
                 setSelectedPrice={setSelectedPrice}
             />
 
+            {/* 
+                Komponen Pagination untuk navigasi halaman produk 
+                Digunakan untuk membatasi jumlah produk per halaman
+            */}
             <Pagination
+                // Nomor halaman saat ini yang sedang ditampilkan
                 currentPage={page}
+                // Total jumlah item yang tersedia dari hasil pencarian/filter
                 totalItems={total}
+                // Jumlah item yang ditampilkan per halaman
                 itemsPerPage={pageSize}
+                // Fungsi handler untuk mengubah halaman ketika user klik navigasi
                 onPageChange={handlePageChange}
             />
+
         </div>
     );
 };

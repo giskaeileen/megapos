@@ -22,14 +22,16 @@ const EmployeesList= () => {
     const entityFilterColumn = `${entity}_filter_column`; 
     const entityFilterValue= `${entity}_filter_value`; 
 
-    // state 
+    // Menyimpan dan mengatur state 
     const [page, setPage] = useState<number>(() => {
         const storedPage = localStorage.getItem(entityPage);
         return storedPage ? parseInt(storedPage, 10) : 1; // Konversi ke number, default ke 1
     });
+    // Menyimpan dan mengatur nilai pencarian dari localStorage
     const [search, setSearch] = useState(() => {
         return localStorage.getItem(`${entity}_search`) || '';
     });
+    // Menyimpan dan mengatur nilai pencarian dari localStorage
     const [sortStatus, setSortStatus] = useState<DataTableSortStatus>(() => {
         const storedSort = localStorage.getItem(`${entitySort}`);
         return storedSort
@@ -39,9 +41,10 @@ const EmployeesList= () => {
     const dispatch = useDispatch();
     const [items, setItems] = useState<any[]>([]);
     const [total, setTotal] = useState();
-    const [deleteEmployee] = useDeleteEmployeeMutation();
-    const [hideCols, setHideCols] = useState<string[]>([]);
-    const isRtl = useSelector((state: IRootState) => state.themeConfig.rtlClass) === 'rtl' ? true : false;
+    const [deleteEmployee] = useDeleteEmployeeMutation(); // Hook dari Redux Toolkit untuk delete
+    const [hideCols, setHideCols] = useState<string[]>([]); // Menyimpan kolom yang disembunyikan
+    const isRtl = useSelector((state: IRootState) => state.themeConfig.rtlClass) === 'rtl' ? true : false; // Cek apakah RTL aktif
+    // Menyimpan kolom dan nilai untuk filter
     const [selectedColumn, setSelectedColumn] = useState<string>(() => {
         return localStorage.getItem(`${entity}_filter_column`) || '';
     }); // Kolom yang difilter
@@ -50,12 +53,12 @@ const EmployeesList= () => {
     }); // nilai filter
 
     // page
-    const [pageSize, setPageSize] = useState(10);
-    const [initialRecords, setInitialRecords] = useState<any[]>([]);
-    const [records, setRecords] = useState(initialRecords);
-    const [selectedRecords, setSelectedRecords] = useState<any>([]);
+    const [pageSize, setPageSize] = useState(10); // Menyimpan jumlah data per halaman
+    const [initialRecords, setInitialRecords] = useState<any[]>([]); // Data mentah sebelum difilter dan diproses
+    const [records, setRecords] = useState(initialRecords); // Data yang akan ditampilkan di tabel
+    const [selectedRecords, setSelectedRecords] = useState<any>([]); // Data yang dipilih (checkbox)
 
-    // data 
+    // Mengambil data employee dari API
     const { data, refetch } = useGetEmployeesQuery(
         { 
             storeId: storeId,
@@ -68,6 +71,7 @@ const EmployeesList= () => {
         },
         { refetchOnMountOrArgChange: true } 
     );
+    // Kolom-kolom yang akan digunakan di DataTable
     const cols = [
         { accessor: 'no', title: 'No' },
         { accessor: 'photo', title: 'Photo' },
@@ -83,6 +87,7 @@ const EmployeesList= () => {
      * search 
      */
 
+    // Simpan nilai filter ke localStorage setiap kali kolom atau nilainya berubah
     useEffect(() => {
         localStorage.setItem(`${entity}_search`, search);
     }, [search]);
@@ -91,6 +96,7 @@ const EmployeesList= () => {
      * filter 
      */
 
+    // Simpan status sort ke localStorage
     useEffect(() => {
         localStorage.setItem(entityFilterColumn, selectedColumn);
         localStorage.setItem(entityFilterValue, filterValue);
@@ -100,6 +106,7 @@ const EmployeesList= () => {
      * sort 
      */
 
+    // Mengambil data sort awal saat komponen pertama kali dimuat
     useEffect(() => {
         localStorage.setItem(`${entitySort}`, JSON.stringify(sortStatus));
     }, [sortStatus]);
@@ -112,7 +119,7 @@ const EmployeesList= () => {
     }, []);
 
     /*****************************
-     * delete 
+     * delete data
      */
 
     const deleteRow = () => {
@@ -123,6 +130,7 @@ const EmployeesList= () => {
      * page 
      */
 
+    // Update initial records dari items
     useEffect(() => {
         setInitialRecords(items)
     }, [items]);
@@ -151,6 +159,7 @@ const EmployeesList= () => {
      * items 
      */
 
+    // Proses data yang didapat dari API agar sesuai dengan kolom
     useEffect(() => {
         if (data?.data) {
             const mappedItems = data.data.map((d: any, index: number) => {
@@ -161,6 +170,7 @@ const EmployeesList= () => {
 
                 cols.forEach(col => {
                     if (col.accessor === 'created_at') {
+                        // Format tanggal
                         mappedObject[col.accessor] = new Intl.DateTimeFormat('id-ID', {
                             year: 'numeric',
                             month: '2-digit',
@@ -172,9 +182,11 @@ const EmployeesList= () => {
                         }).format(new Date(d[col.accessor]));
 
                     } else if (col.accessor === 'no') {
+                        // Hitung nomor urut berdasarkan halaman
                        mappedObject[col.accessor] = (index + 1) + ((page - 1) * pageSize)
 
                     } else if (col.accessor === 'photo') {
+                        // Tampilkan foto atau gambar default
                         mappedObject[col.accessor] =  d.photo 
                             ? `${import.meta.env.VITE_SERVER_URI_BASE}storage/profile/${d.photo}` 
                             : '/assets/images/blank_profile.png' 
@@ -218,15 +230,20 @@ const EmployeesList= () => {
 
     return (
         <div>
+            {/* Header title dan button aksi */}
             <div className="flex items-center justify-between flex-wrap gap-4 mb-5">
+                {/* Judul berdasarkan nama entity */}
                 <h2 className="text-xl">{capitalizeFirstLetter(entity)}</h2>
+                {/* button Delete dan create */}
                 <div className="flex sm:flex-row flex-col sm:items-center sm:gap-3 gap-4 w-full sm:w-auto">
                     <div className="relative">
                         <div className="flex items-center gap-2">
+                            {/* button delete */}
                             <button type="button" className="btn btn-danger gap-2" onClick={() => deleteRow()}>
                                 <IconTrashLines />
                                 Delete
                             </button>
+                            /* Link menuju halaman create data baru */}
                             <Link to={`/${storeId}/${entity}/create`} className="btn btn-primary gap-2">
                                 <IconPlus />
                                 Add New
@@ -235,10 +252,14 @@ const EmployeesList= () => {
                     </div>
                 </div>
             </div>
+
+            {/* Panel container tabel data */}
             <div className="panel px-0 border-white-light dark:border-[#1b2e4b]">
                 <div className="invoice-table">
+                    {/* Filter, Search, Column visibility */}
                     <div className="mb-4.5 px-5 flex md:items-center md:flex-row flex-col gap-5">
                         <div className="flex md:items-center md:flex-row flex-col gap-5">
+                            {/* Dropdown untuk memilih kolom yang ingin ditampilkan/sembunyikan */}
                             <div className="dropdown">
                                 <Dropdown
                                     placement={`${isRtl ? 'bottom-end' : 'bottom-start'}`}
@@ -250,6 +271,7 @@ const EmployeesList= () => {
                                         </>
                                     }
                                 >
+                                    {/* Daftar kolom dengan checkbox untuk show/hide */}
                                     <ul className="!min-w-[140px]">
                                         {cols.map((col, i) => {
                                             return (
@@ -257,19 +279,19 @@ const EmployeesList= () => {
                                                     key={i}
                                                     className="flex flex-col"
                                                     onClick={(e) => {
-                                                        e.stopPropagation();
+                                                        e.stopPropagation(); // Mencegah dropdown tertutup saat klik
                                                     }}
                                                 >
                                                     <div className="flex items-center px-4 py-1">
                                                         <label className="cursor-pointer mb-0">
                                                             <input
                                                                 type="checkbox"
-                                                                checked={!hideCols.includes(col.accessor)}
+                                                                checked={!hideCols.includes(col.accessor)} // cek apakah kolom disembunyikan
                                                                 className="form-checkbox"
                                                                 defaultValue={col.accessor}
                                                                 onChange={(event: any) => {
-                                                                    setHideCols(event.target.value);
-                                                                    showHideColumns(col.accessor);
+                                                                    setHideCols(event.target.value); // simpan kolom tersembunyi
+                                                                    showHideColumns(col.accessor); // panggil fungsi untuk show/hide kolom
                                                                 }}
                                                             />
                                                             <span className="ltr:ml-2 rtl:mr-2">{col.title}</span>
@@ -285,6 +307,7 @@ const EmployeesList= () => {
 
                         {/* Dropdown Pilih Kolom + Input Filter */}
                         <div className="flex gap-3">
+                            {/* Pilih kolom untuk difilter */}
                             <select 
                                 value={selectedColumn} 
                                 onChange={(e) => setSelectedColumn(e.target.value)}
@@ -299,6 +322,7 @@ const EmployeesList= () => {
                                 }
                             </select>
 
+                            {/* Input nilai filter */}
                             <input 
                                 type="text"
                                 value={filterValue}
@@ -308,11 +332,13 @@ const EmployeesList= () => {
                             />
                         </div>
 
+                        {/* Kolom pencarian */}
                         <div className="ltr:ml-auto rtl:mr-auto">
                             <input type="text" className="form-input w-auto" placeholder="Search..." value={search} onChange={(e) => setSearch(e.target.value)} />
                         </div>
                     </div>
 
+                    {/* DataTable */}
                     <div className="datatables pagination-padding">
                         <DataTable
                             className="whitespace-nowrap table-hover invoice-table"
@@ -320,16 +346,16 @@ const EmployeesList= () => {
                             columns={[
                                 {
                                     accessor: 'no',
-                                    // sortable: true,
                                     hidden: hideCols.includes('no'),
                                 },
                                 {
                                     accessor: 'name',
-                                    sortable: true,
+                                    sortable: true, // Bisa di-sort
                                     hidden: hideCols.includes('name'),
                                     render: ({ name, id, photo}) => {
                                         return (
                                             <div className="flex items-center font-semibold">
+                                                {/* Foto pengguna */}
                                                 <div className="p-0.5 bg-white-dark/30 rounded-full w-max ltr:mr-2 rtl:ml-2">
                                                     <img
                                                         className="h-8 w-8 rounded-full object-cover"
@@ -375,16 +401,16 @@ const EmployeesList= () => {
                                     hidden: hideCols.includes('created_at'),
                                 },
                             ]}
-                            highlightOnHover
-                            totalRecords={total}
-                            recordsPerPage={pageSize}
-                            page={page}
-                            onPageChange={(p) => setPage(p)}
-                            sortStatus={sortStatus}
-                            onSortStatusChange={setSortStatus}
-                            selectedRecords={selectedRecords}
-                            onSelectedRecordsChange={setSelectedRecords}
-                            paginationText={({ from, to, totalRecords }) => `Showing  ${from} to ${to} of ${totalRecords} entries`}
+                            highlightOnHover // highlight saat hover
+                            totalRecords={total} // total data keseluruhan
+                            recordsPerPage={pageSize} // jumlah per halaman
+                            page={page} // halaman saat ini
+                            onPageChange={(p) => setPage(p)} // handler ubah halaman
+                            sortStatus={sortStatus} // status pengurutan
+                            onSortStatusChange={setSortStatus} // handler perubahan urutan
+                            selectedRecords={selectedRecords} // data terpilih
+                            onSelectedRecordsChange={setSelectedRecords} // handler perubahan data terpilih
+                            paginationText={({ from, to, totalRecords }) => `Showing  ${from} to ${to} of ${totalRecords} entries`} // teks pagination
                         />
                     </div>
                 </div>

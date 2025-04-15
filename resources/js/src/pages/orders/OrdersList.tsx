@@ -10,7 +10,6 @@ import IconCaretDown from '../../components/Icon/IconCaretDown';
 import { useDeleteSuppliersMutation } from '../../redux/features/suppliers/suppliersApi';
 import { useGetOrdersProductQuery, useGetOrdersQuery, useLazyGetOrdersProductQuery, useLazyGetOrdersQuery } from '../../redux/features/orders/ordersApi';
 import { capitalizeFirstLetter } from '../../components/tools';
-// import ChartReport from './ChartReport';
 import exportPDF from '../../components/ExportPDF';
 import exportXLSX from '../../components/ExportXLSX';
 import exportCSV from '../../components/ExportCSV';
@@ -42,9 +41,11 @@ const SalesProductReport = () => {
         const storedPage = localStorage.getItem(entityPage);
         return storedPage ? parseInt(storedPage, 10) : 1; // Konversi ke number, default ke 1
     });
+    // State pencarian
     const [search, setSearch] = useState(() => {
         return localStorage.getItem(`${entity}_search`) || '';
     });
+    // State status sorting default dari localStorage atau default ke created_at desc
     const [sortStatus, setSortStatus] = useState<DataTableSortStatus>(() => {
         const storedSort = localStorage.getItem(`${entitySort}`);
         return storedSort
@@ -57,6 +58,7 @@ const SalesProductReport = () => {
     const [deleteSupplier] = useDeleteSuppliersMutation();
     const [hideCols, setHideCols] = useState<string[]>([]);
     const isRtl = useSelector((state: IRootState) => state.themeConfig.rtlClass) === 'rtl' ? true : false;
+    // Filter kolom dan nilai
     const [selectedColumn, setSelectedColumn] = useState<string>(() => {
         return localStorage.getItem(`${entity}_filter_column`) || '';
     }); // Kolom yang difilter
@@ -64,12 +66,15 @@ const SalesProductReport = () => {
         return localStorage.getItem(`${entity}_filter_value`) || '';
     }); // nilai filter
 
+    // Filter berdasarkan tanggal
     const [selectedDateFilter, setSelectedDateFilter] = useState(
         localStorage.getItem(entitySelectedDateFilter) || "daily"
     );
     const [filterDateValue, setFilterDateValue] = useState(
         localStorage.getItem(entityFilterDateValue) || ""
     );
+
+    // Rentang filter berdasarkan tanggal dan harga
     const [rangeDate, setRangeDate] = useState(
         JSON.parse(localStorage.getItem(entityRangeDate) ?? "{}") || { start: "", end: "" }
     );
@@ -77,7 +82,7 @@ const SalesProductReport = () => {
         JSON.parse(localStorage.getItem(entityRangePrice) ?? "{}") || { min: "", max: "" }
     );
 
-    // data 
+    // data dari API
     const { data, refetch } = useGetOrdersProductQuery(
         { 
             storeId, 
@@ -96,6 +101,7 @@ const SalesProductReport = () => {
         },
         { refetchOnMountOrArgChange: true } 
     );
+    // Kolom-kolom untuk DataTable
     const cols = [
         { accessor: 'no', title: 'No' },
         { accessor: 'order_date', title: 'Order Date' },
@@ -121,6 +127,7 @@ const SalesProductReport = () => {
      * search 
      */
 
+    // Simpan perubahan pencarian ke localStorage
     useEffect(() => {
         localStorage.setItem(`${entity}_search`, search);
     }, [search]);
@@ -129,6 +136,7 @@ const SalesProductReport = () => {
      * filter 
      */
 
+    // Simpan perubahan filter kolom dan nilai ke localStorage
     useEffect(() => {
         localStorage.setItem(entityFilterColumn, selectedColumn);
         localStorage.setItem(entityFilterValue, filterValue);
@@ -148,6 +156,7 @@ const SalesProductReport = () => {
         localStorage.setItem(entityRangePrice, JSON.stringify(rangePrice));
     }, [rangePrice]);
 
+    // Reset filter nilai saat filter jenis berubah
     useEffect(() => {
         setFilterDateValue("")
     }, [selectedDateFilter])
@@ -156,10 +165,12 @@ const SalesProductReport = () => {
      * sort 
      */
 
+    // Simpan sorting ke localStorage
     useEffect(() => {
         localStorage.setItem(`${entitySort}`, JSON.stringify(sortStatus));
     }, [sortStatus]);
 
+    // Ambil ulang sorting saat pertama kali render
     useEffect(() => {
         const storedSort = localStorage.getItem(`${entitySort}`);
         if (storedSort) {
@@ -171,6 +182,7 @@ const SalesProductReport = () => {
      * page 
      */
 
+    // Data untuk tabel
     const [pageSize, setPageSize] = useState(10);
     const [initialRecords, setInitialRecords] = useState<any[]>([]);
     useEffect(() => {
@@ -203,20 +215,19 @@ const SalesProductReport = () => {
      * items 
      */
 
+    // Transformasi data yang didapat dari API agar cocok untuk DataTable
     useEffect(() => {
         if (data?.data) {
             const mappedItems = data.data.map((d: any, index: number) => {
-                // Buat objek berdasarkan kolom yang telah didefinisikan
-                // let mappedObject: { [key: string]: any } = {
-                //     id: d.id,
-                // };
                 let mappedObject: { [key: string]: any } = {
                     id: d.id,
                     products: d.products || [], // Simpan daftar produk dari order
                 };
 
+                // Iterasi kolom dan isi data masing-masing
                 cols.forEach(col => {
                     if (col.accessor === 'created_at') {
+                        // Format tanggal
                         mappedObject[col.accessor] = new Intl.DateTimeFormat('id-ID', {
                             year: 'numeric',
                             month: '2-digit',
@@ -228,17 +239,21 @@ const SalesProductReport = () => {
                         }).format(new Date(d[col.accessor]));
 
                     } else if (col.accessor === 'no') {
+                        // Hitung nomor urut berdasarkan halaman
                        mappedObject[col.accessor] = (index + 1) + ((page - 1) * pageSize)
 
                     } else if (col.accessor === 'name_member') {
+                        // Ambil nama member jika tersedia
                        mappedObject[col.accessor] = d['member']?.name ?? "-" 
 
                     } else if (col.accessor === 'photo') {
+                        // Format URL foto
                         mappedObject[col.accessor] =  d.photo 
                             ? `${import.meta.env.VITE_SERVER_URI_BASE}storage/profile/${d.photo}` 
                             : '/assets/images/profile-2.jpeg' 
 
                     } else {
+                        // Data default
                         mappedObject[col.accessor] = d[col.accessor] ?? '-';
                     }
                 });
@@ -246,6 +261,7 @@ const SalesProductReport = () => {
                 return mappedObject;
             });
 
+            // Set hasil transformasi ke items dan total data
             setItems(mappedItems);
             setTotal(data.total);
         }
@@ -283,17 +299,22 @@ const SalesProductReport = () => {
 
     // ======
 
+    // State untuk menunjukkan apakah proses fetch seluruh order sedang berlangsung
 const [isFetchingAll, setIsFetchingAll] = useState(false);
-const [allOrders, setAllOrders] = useState<any[]>([]);
+const [allOrders, setAllOrders] = useState<any[]>([]); // State untuk menyimpan semua data order
 
+/**
+ * Fungsi untuk mengambil semua data order berdasarkan filter dan pagination.
+ * Fungsi ini melakukan fetch secara berulang dari page pertama hingga terakhir.
+ */
 const fetchAllOrders = async (params: any) => {
-    setIsFetchingAll(true);
+    setIsFetchingAll(true);  // Set state menjadi true saat proses fetching dimulai
     let allOrders: any[] = [];
     let currentPage = 1;
     let lastPage = 1;
 
     try {
-        // First fetch to get total pages
+        // Fetch pertama untuk mendapatkan total halaman
         const firstResult = await fetchOrdersTrigger({ 
             ...params, 
             page: currentPage 
@@ -303,12 +324,12 @@ const fetchAllOrders = async (params: any) => {
         lastPage = firstResult.last_page;
         currentPage++;
 
-        // Add delay between requests
+        // Fungsi untuk memberikan jeda antar request
         const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
         
-        // Fetch remaining pages with delay
+        // Ambil halaman yang tersisa dengan penundaan
         while (currentPage <= lastPage) {
-            await delay(500); // 300ms delay between requests
+            await delay(500); // Delay 500ms antar request
             const result = await fetchOrdersTrigger({ 
                 ...params, 
                 page: currentPage 
@@ -320,12 +341,16 @@ const fetchAllOrders = async (params: any) => {
     } catch (error) {
         console.error("Error fetching all orders:", error);
     } finally {
-        setIsFetchingAll(false);
+        setIsFetchingAll(false); // Set state menjadi false saat proses selesai
     }
 
     return allOrders;
 };
 
+/**
+ * Fungsi callback untuk mengambil semua data order dan menyimpannya ke state `allOrders`.
+ * Fungsi ini akan dipanggil ulang hanya jika dependensinya berubah.
+ */
 const fetchOrdersData = useCallback(async () => {
     const orders = await fetchAllOrders({
         storeId, 
@@ -341,7 +366,7 @@ const fetchOrdersData = useCallback(async () => {
         rangePriceMin: rangePrice.min,
         rangePriceMax: rangePrice.max,
     });
-    setAllOrders(orders);
+    setAllOrders(orders); // Simpan data order yang sudah difetch ke state
 }, [
     storeId, 
     search,
@@ -358,62 +383,14 @@ const fetchOrdersData = useCallback(async () => {
 
     const [fetchOrdersTrigger] = useLazyGetOrdersProductQuery(); // Gunakan Lazy Query
 
+    const fetchOrders = refetch; // Refetch dari query jika dibutuhkan
 
-    // const fetchAllOrders = async (params: any, fetchOrders: any) => {
-    //     let allOrders: any[] = [];
-    //     let currentPage = 1;
-    //     let lastPage = 1;
-
-    //     try {
-    //         while (currentPage <= lastPage) {
-    //             // const result = await fetchOrders({ ...params, page: currentPage }).unwrap();
-    //             const result = await fetchOrdersTrigger({ ...params, page: currentPage }).unwrap();
-
-    //             // console.log(result)
-
-    //             allOrders = [...allOrders, ...result.data];
-    //             lastPage = result.last_page; // Total halaman yang tersedia
-    //             currentPage++;
-    //         }
-    //     } catch (error) {
-    //         console.error("Error fetching all orders:", error);
-    //     }
-
-    //     return allOrders;
-    // };
-
-    const fetchOrders = refetch;
-
-    // const [allOrders, setAllOrders] = useState<any[]>([]);
-
-    // const fetchOrdersData = async () => {
-    //     const orders = await fetchAllOrders(
-    //         { 
-    //             storeId, 
-    //             search,
-    //             sort: sortStatus.columnAccessor,
-    //             direction: sortStatus.direction,
-    //             filterColumn: selectedColumn,  
-    //             filterValue,    
-    //             selectedDateFilter,
-    //             filterDateValue,
-    //             rangeDateStart: rangeDate.start,
-    //             rangeDateEnd: rangeDate.end,
-    //             rangePriceMin: rangePrice.min,
-    //             rangePriceMax: rangePrice.max,
-    //         },
-    //         fetchOrders // Inject RTK Query
-    //     );
-    //     setAllOrders(orders);
-    // };
-
-    // useEffect(() => {
-    //     fetchOrdersData();
-    // }, [data]);
-
+    /**
+     * Fungsi untuk mengekspor data order ke PDF, Excel, atau CSV berdasarkan jenis export.
+     */
     const handleExport = async (type: any) => {
-        // await fetchOrdersData(); // Ambil data terbaru sebelum ekspor
 
+        // Filter yang digunakan saat export
         const filters = {
             selectedDateFilter,
             filterDateValue,
@@ -425,9 +402,10 @@ const fetchOrdersData = useCallback(async () => {
             rangePriceMax: rangePrice.max,
         };
 
+        // Ambil kolom yang tidak disembunyikan
         const visibleCols = cols.filter(col=> !hideCols.includes(col.accessor));
 
-        // exportPDF(allOrders, cols, filters, capitalizeFirstLetter(storeId), capitalizeFirstLetter(entity));
+        // Ekspor sesuai tipe yang dipilih
         if (type === "pdf") {
             exportPDFOrderProduct(allOrders, visibleCols, filters, capitalizeFirstLetter(storeId), capitalizeFirstLetter(entity));
         } else if (type === "xlsx") {
@@ -437,23 +415,28 @@ const fetchOrdersData = useCallback(async () => {
         }
     };
 
+    /**
+     * Fungsi utilitas untuk menghitung total nilai dari sebuah key pada array records.
+     */
     const getTotal = (key: any) => {
         return records.reduce((sum, row) => sum + (parseFloat(row[key]) || 0), 0);
     };
 
+    // State untuk menyimpan baris yang sedang diperluas (expand)
     const [expandedRow, setExpandedRow] = useState<number | null>(null);
 
+    /**
+     * Fungsi untuk mencetak invoice berdasarkan data yang dipilih.
+     * Akan memunculkan konfirmasi sebelum mencetak dan memproses tiap item secara paralel.
+     */
     const printInvoice = async () => {
-        // console.log(records)
-        // deleteConfirmation(selectedRecords, deleteEmployee, refetch, storeId);
-        // console.log(selectedRecords)
 
+        // Validasi jika tidak ada data yang dipilih
         if (!selectedRecords.length) {
             Swal.fire({
                 icon: "info",
                 title: "No Selection",
                 text: "Please select at least one record to print.",
-                // customClass: "sweet-alerts",
                 customClass: {
                     popup: "sweet-alerts", 
                     confirmButton: "btn-confirm", 
@@ -463,6 +446,7 @@ const fetchOrdersData = useCallback(async () => {
             return;
         }
 
+        // Tampilkan alert konfirmasi
         const result = await Swal.fire({
             icon: "warning",
             title: "Are you sure?",
@@ -471,7 +455,6 @@ const fetchOrdersData = useCallback(async () => {
             confirmButtonText: "Print",
             cancelButtonText: "Cancel",
             padding: "2em",
-            // customClass: "sweet-alerts",
             customClass: {
                 popup: "sweet-alerts", 
                 confirmButton: "btn-confirm", 
@@ -481,19 +464,17 @@ const fetchOrdersData = useCallback(async () => {
 
         if (result.isConfirmed) {
             try {
-                // Iterasi dan hapus setiap item
-                // const deletePromises = selectedRecords.map((record) =>
-                //     deleteCategory({ storeId, id: record.id }).unwrap()
-                // );
-
+                // Proses cetak untuk setiap data yang dipilih
                 const deletePromises = selectedRecords.map((record: any) => {
                     const { products, ...rest } = record; // Ambil 'products' dan sisanya dari record
+                    // Transformasi data 'products' menjadi 'cart' untuk keperluan cetak
                     const transformedCart = products.map(({ product, ...rest }) => ({
                         ...rest,
                         ...product
                     }));
                     console.log({ ...rest, cart: transformedCart}); // Ganti 'products' dengan 'cart'
 
+                    // Cetak nota dengan data yang sudah ditransformasi
                     PrintReceipt({ ...rest, cart: transformedCart})
                 });
 
@@ -505,7 +486,6 @@ const fetchOrdersData = useCallback(async () => {
                     title: "Printed!",
                     text: "Selected records have been printed.",
                     icon: "success",
-                    // customClass: "sweet-alerts",
                     customClass: {
                         popup: "sweet-alerts", 
                         confirmButton: "btn-confirm", 
@@ -521,7 +501,6 @@ const fetchOrdersData = useCallback(async () => {
                     title: "Error!",
                     text: "An error occurred while deleting records.",
                     icon: "error",
-                    // customClass: "sweet-alerts",
                     customClass: {
                         popup: "sweet-alerts", 
                         confirmButton: "btn-confirm", 
@@ -534,11 +513,13 @@ const fetchOrdersData = useCallback(async () => {
 
     return (
         <div>
+            {/* Header Judul dan button Print Invoice */}
             <div className="flex items-center justify-between flex-wrap gap-4 mb-5">
                 <h2 className="text-xl">{capitalizeFirstLetter(entity)}</h2>
                 <div className="flex sm:flex-row flex-col sm:items-center sm:gap-3 gap-4 w-full sm:w-auto">
                     <div className="relative">
                         <div className="flex items-center gap-2">
+                            {/* button untuk mencetak invoice */}
                             <button type="button" className="btn btn-info gap-2" onClick={() => printInvoice()}>
                                 <IconPrinter />
                                 Print Invoice 
@@ -549,12 +530,10 @@ const fetchOrdersData = useCallback(async () => {
             </div>
 
             {/* statistik */}
-            {/* <ChartReport allOrders={allOrders} /> */}
 
             {/* Total Summary */}
             <div className="panel p-4 mt-4 mb-4 rounded-md">
                 <h3 className="text-lg font-semibold text-gray-700 mb-2">Total Summary</h3>
-                {/* <table className="w-full border-collapse text-sm bg-white rounded-md"> */}
                 <table className="table-responsive">
                     <thead>
                         <tr>
@@ -567,6 +546,7 @@ const fetchOrdersData = useCallback(async () => {
                     </thead>
                     <tbody>
                         <tr>
+                            {/* Menampilkan total berdasarkan fungsi getTotal */}
                             <td>Total</td>
                             <td>{getTotal("total_products")}</td>
                             <td>{getTotal("sub_total").toLocaleString()}</td>
@@ -577,12 +557,13 @@ const fetchOrdersData = useCallback(async () => {
                 </table>
             </div>
 
+            {/* Panel untuk tabel invoice */}
             <div className="panel px-0 border-white-light dark:border-[#1b2e4b]">
                 <div className="invoice-table">
                     <div className="mb-4.5 px-5 flex flex-col gap-3">
                         {/* Baris Pertama */}
                         <div className="grid grid-cols-1 md:grid-cols-6 gap-3 content-between">
-                            {/* Dropdown Columns */}
+                            {/* Dropdown untuk memilih kolom yang ingin ditampilkan/sembunyikan */}
                             <div className="dropdown w-full">
                                 <Dropdown
                                     placement={`${isRtl ? 'bottom-end' : 'bottom-start'}`}
@@ -595,22 +576,23 @@ const fetchOrdersData = useCallback(async () => {
                                     }
                                 >
                                     <ul className="!min-w-max">
+                                        {/* Daftar checkbox untuk setiap kolom */}
                                         {cols.map((col, i) => (
                                             <li
                                                 key={i}
                                                 className="flex flex-col"
-                                                onClick={(e) => e.stopPropagation()}
+                                                onClick={(e) => e.stopPropagation()} // Mencegah dropdown tertutup saat klik item
                                             >
                                                 <div className="flex items-center px-4 py-1">
                                                     <label className="cursor-pointer mb-0">
                                                         <input
                                                             type="checkbox"
-                                                            checked={!hideCols.includes(col.accessor)}
+                                                            checked={!hideCols.includes(col.accessor)} // Checkbox aktif jika kolom tidak disembunyikan
                                                             className="form-checkbox"
                                                             defaultValue={col.accessor}
                                                             onChange={(event: any) => {
-                                                                setHideCols(event.target.value);
-                                                                showHideColumns(col.accessor);
+                                                                setHideCols(event.target.value); // Update daftar kolom yang disembunyikan
+                                                                showHideColumns(col.accessor); // Fungsi untuk menyembunyikan/menampilkan kolom
                                                             }}
                                                         />
                                                         <span className="ltr:ml-2 rtl:mr-2">{col.title}</span>
@@ -622,7 +604,7 @@ const fetchOrdersData = useCallback(async () => {
                                 </Dropdown>
                             </div>
 
-                            {/* Select Daily, Monthly, Yearly */}
+                            {/* Select untuk memilih filter waktu harian, bulanan, tahunan */}
                             <select
                                 value={selectedDateFilter}
                                 onChange={(e) => setSelectedDateFilter(e.target.value)}
@@ -633,7 +615,7 @@ const fetchOrdersData = useCallback(async () => {
                                 <option value="yearly">Yearly</option>
                             </select>
 
-                            {/* Inputan Berdasarkan Pilihan */}
+                            {/* Input tanggal ketika filter dipilih Daily */}
                             {selectedDateFilter === "daily" && (
                                 <input
                                     type="date"
@@ -643,6 +625,7 @@ const fetchOrdersData = useCallback(async () => {
                                 />
                             )}
 
+                            {/* Input bulan ketika filter dipilih Monthly */}
                             {selectedDateFilter === "monthly" && (
                                 <input
                                     type="month"
@@ -652,6 +635,7 @@ const fetchOrdersData = useCallback(async () => {
                                 />
                             )}
 
+                            {/* Input tahun ketika filter dipilih Yearly */}
                             {selectedDateFilter === "yearly" && (
                                 <input
                                     type="number"
@@ -664,7 +648,9 @@ const fetchOrdersData = useCallback(async () => {
                                 />
                             )}
 
+                            {/* Baris atas dengan button export dan search */}
                             <div className="md:col-span-3 flex gap-3 w-full">
+                                {/* button export ke berbagai format */}
                                 <div className="flex gap-1 justify-end w-full">
                                     <div className="flex gap-1 justify-end w-full">
                                         <button type="button" className="btn btn-primary btn-sm m-1" onClick={() => handleExport("csv")}>
@@ -679,6 +665,7 @@ const fetchOrdersData = useCallback(async () => {
                                     </div>
                                 </div>
 
+                                {/* Kolom input untuk pencarian */}
                                 <input 
                                     type="text" 
                                     className="form-input w-full" 
@@ -689,9 +676,9 @@ const fetchOrdersData = useCallback(async () => {
                             </div>
                         </div>
 
-                        {/* Baris Kedua */}
+                        {/* Baris kedua berisi filter kolom, tanggal, dan harga */}
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                            {/* Filter Kolom */}
+                            {/* Filter berdasarkan kolom tertentu */}
                             <div className="flex gap-3 w-full">
                                 <select 
                                     value={selectedColumn} 
@@ -699,6 +686,7 @@ const fetchOrdersData = useCallback(async () => {
                                     className="form-select w-full"
                                 >
                                     <option value="">Column Filter</option>
+                                    {/* Menampilkan kolom yang bisa difilter, kecuali kolom no, photo, dan created_at */}
                                     {cols
                                         .filter(col => col.accessor !== "no" && col.accessor !== "photo" && col.accessor !== "created_at")
                                         .map(col => (
@@ -706,6 +694,7 @@ const fetchOrdersData = useCallback(async () => {
                                         ))
                                     }
                                 </select>
+                                {/* Input nilai filter */}
                                 <input 
                                     type="text"
                                     value={filterValue}
@@ -715,7 +704,7 @@ const fetchOrdersData = useCallback(async () => {
                                 />
                             </div>
 
-                            {/* Range Date */}
+                            {/* Filter rentang tanggal */}
                             <div className="flex gap-3 w-full">
                                 <input 
                                     type="date"
@@ -733,7 +722,7 @@ const fetchOrdersData = useCallback(async () => {
                                 />
                             </div>
 
-                            {/* Range Price */}
+                            {/* Filter rentang harga/pembayaran */}
                             <div className="flex gap-3 w-full">
                                 <input 
                                     type="number"
@@ -753,11 +742,13 @@ const fetchOrdersData = useCallback(async () => {
                         </div>
                     </div>
 
+                    {/* Tabel */}
                     <div className="datatables pagination-padding">
                         <DataTable
                             className="whitespace-nowrap table-hover invoice-table"
-                            records={records}
+                            records={records} // Data yang akan ditampilkan dalam tabel
                             columns={[
+                                // Kolom tabel dengan aksesornya dan opsi disembunyikan jika ada di hideCols
                                 {
                                     accessor: 'no',
                                     // sortable: true,
@@ -844,19 +835,20 @@ const fetchOrdersData = useCallback(async () => {
                                     hidden: hideCols.includes('created_at'),
                                 }, 
                             ]}
-                            highlightOnHover
-                            totalRecords={total}
-                            recordsPerPage={pageSize}
-                            page={page}
-                            onPageChange={(p) => setPage(p)}
-                            sortStatus={sortStatus}
-                            selectedRecords={selectedRecords}
-                            onSelectedRecordsChange={setSelectedRecords}
-                            onSortStatusChange={setSortStatus}
+                            highlightOnHover // Efek hover saat mouse di atas baris
+                            totalRecords={total} // Total jumlah data
+                            recordsPerPage={pageSize} // Jumlah data per halaman
+                            page={page} // Halaman saat ini
+                            onPageChange={(p) => setPage(p)} // Fungsi untuk ganti halaman
+                            sortStatus={sortStatus} // Status sorting saat ini
+                            selectedRecords={selectedRecords} // Data yang dipilih (checkbox)
+                            onSelectedRecordsChange={setSelectedRecords} // Fungsi untuk update data yang dipilih
+                            onSortStatusChange={setSortStatus} // Fungsi untuk mengatur sorting
                             paginationText={({ from, to, totalRecords }) =>
                                 `Showing ${from} to ${to} of ${totalRecords} entries`
-                            }
+                            } // Teks pagination
                             rowExpansion={{
+                                // Ekspansi baris untuk menampilkan detail produk dalam invoice
                                 content: ({ record }) => (
                                     <table>
                                         <thead>
@@ -870,6 +862,7 @@ const fetchOrdersData = useCallback(async () => {
                                         </tr>
                                         </thead>
                                         <tbody>
+                                        {/* Menampilkan detail setiap produk dalam invoice */}
                                         {record.products.map((d: any, index: number) => (
                                             <tr key={index}>
                                                 <td>{d.product?.product_name}</td>

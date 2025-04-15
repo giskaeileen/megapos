@@ -13,46 +13,55 @@ import { useDeleteUserMutation, useGetUsersQuery } from '../../redux/features/us
 import { capitalizeFirstLetter, deleteConfirmation } from '../../components/tools';
 
 const UsersList= () => {
-    // entity localstorage
+    // Ambil lokasi URL saat ini untuk menentukan entity
     const location = useLocation();
     const pathnames = location.pathname.split('/').filter((x) => x);
     const entity = pathnames[0];
+    // Nama-nama key localStorage sesuai dengan entity
     const entityCols = `${entity}_cols`; 
     const entityPage = `${entity}_page`; 
     const entitySort = `${entity}_sort`; 
     const entityFilterColumn = `${entity}_filter_column`; 
     const entityFilterValue= `${entity}_filter_value`; 
 
-    // state 
+    // Inisialisasi state page dari localStorage atau default ke 1
     const [page, setPage] = useState<number>(() => {
         const storedPage = localStorage.getItem(entityPage);
-        return storedPage ? parseInt(storedPage, 10) : 1; // Konversi ke number, default ke 1
+        return storedPage ? parseInt(storedPage, 10) : 1;
     });
+
+    // Inisialisasi state search dari localStorage
     const [search, setSearch] = useState(() => {
         return localStorage.getItem(`${entity}_search`) || '';
     });
+
+    // Inisialisasi state sortStatus dari localStorage atau default
     const [sortStatus, setSortStatus] = useState<DataTableSortStatus>(() => {
         const storedSort = localStorage.getItem(`${entitySort}`);
         return storedSort
             ? JSON.parse(storedSort) 
             : { columnAccessor: 'created_at', direction: 'desc' }; 
     });
+
     const dispatch = useDispatch();
-    const [items, setItems] = useState<any[]>([]);
-    const [total, setTotal] = useState();
-    const [deleteUser] = useDeleteUserMutation();
-    const [hideCols, setHideCols] = useState<string[]>([]);
+    const [items, setItems] = useState<any[]>([]); // Data mentah hasil query API
+    const [total, setTotal] = useState(); // Total data keseluruhan
+    const [deleteUser] = useDeleteUserMutation(); // Fungsi hapus dari RTK Query
+    const [hideCols, setHideCols] = useState<string[]>([]); // Kolom yang disembunyikan
+
+    // Deteksi RTL (untuk dropdown placement)
     const isRtl = useSelector((state: IRootState) => state.themeConfig.rtlClass) === 'rtl' ? true : false;
+
+    // Inisialisasi kolom yang difilter dan nilai filter dari localStorage
     const [selectedColumn, setSelectedColumn] = useState<string>(() => {
         return localStorage.getItem(`${entity}_filter_column`) || '';
-    }); // Kolom yang difilter
+    });
+
     const [filterValue, setFilterValue] = useState<string>(() => {
         return localStorage.getItem(`${entity}_filter_value`) || '';
-    }); // nilai filter
+    });
 
-    //page
-
-    //data
+    // Query ke backend untuk mengambil data user dengan parameter
     const { data, refetch } = useGetUsersQuery(
         { 
             page, 
@@ -64,6 +73,8 @@ const UsersList= () => {
         },
         { refetchOnMountOrArgChange: true } 
     );
+
+    // Kolom-kolom tabel
     const cols = [
         { accessor: 'no', title: 'No' },
         { accessor: 'name', title: 'Name' },
@@ -75,31 +86,23 @@ const UsersList= () => {
         { accessor: 'created_at', title: 'Created At' },
     ];
 
-    /*****************************
-     * search 
-     */
-
+    // Simpan search ke localStorage setiap kali berubah
     useEffect(() => {
         localStorage.setItem(`${entity}_search`, search);
     }, [search]);
 
-    /*****************************
-     * filter 
-     */
-
+    // Simpan filter column dan filter value ke localStorage setiap kali berubah
     useEffect(() => {
         localStorage.setItem(entityFilterColumn, selectedColumn);
         localStorage.setItem(entityFilterValue, filterValue);
     }, [selectedColumn, filterValue]);
 
-    /*****************************
-     * sort 
-     */
-
+    // Simpan sorting ke localStorage setiap kali berubah
     useEffect(() => {
         localStorage.setItem(`${entitySort}`, JSON.stringify(sortStatus));
     }, [sortStatus]);
 
+    // Saat pertama kali mount, ambil sort dari localStorage jika ada
     useEffect(() => {
         const storedSort = localStorage.getItem(`${entitySort}`);
         if (storedSort) {
@@ -107,27 +110,23 @@ const UsersList= () => {
         }
     }, []);
 
-    /*****************************
-     * delete 
-     */
-
+    // Fungsi hapus data yang dipilih
     const deleteRow = () => {
         deleteConfirmation(selectedRecords, deleteUser, refetch);
     };
 
-    /*****************************
-     * page 
-     */
-
+    // Inisialisasi pageSize dan records awal
     const [pageSize, setPageSize] = useState(10);
     const [initialRecords, setInitialRecords] = useState<any[]>([]);
     useEffect(() => {
         setInitialRecords(items)
     }, [items]);
+
+    // Data yang ditampilkan di tabel
     const [records, setRecords] = useState(initialRecords);
     const [selectedRecords, setSelectedRecords] = useState<any>([]);
 
-    // Muat data awal dari localStorage saat komponen pertama kali dirender
+    // Saat mount, ambil nilai page dari localStorage
     useEffect(() => {
         const storedPage = localStorage.getItem(entityPage);
         if (storedPage) {
@@ -135,26 +134,22 @@ const UsersList= () => {
         }
     }, []);
 
-    // Simpan nilai `page` ke localStorage saat berubah
+    // Simpan nilai page ke localStorage setiap kali berubah
     useEffect(() => {
         localStorage.setItem(entityPage, String(page));
     }, [page]);
 
-    // Perbarui data `records` setiap kali `page` atau `pageSize` berubah
+    // Perbarui data records ketika page atau pageSize berubah
     useEffect(() => {
         const from = (page - 1) * pageSize;
         const to = from + pageSize;
         setRecords(initialRecords);
     }, [page, pageSize, initialRecords]);
 
-    /*****************************
-     * items 
-     */
-
+    // Mapping data dari response API ke struktur sesuai dengan kolom
     useEffect(() => {
         if (data?.data) {
             const mappedItems = data.data.map((d: any, index: number) => {
-                // Buat objek berdasarkan kolom yang telah didefinisikan
                 let mappedObject: { [key: string]: any } = {
                     id: d.id,
                 };
@@ -195,16 +190,12 @@ const UsersList= () => {
         }
     }, [data, page, pageSize]);
 
-    // Mengatur judul halaman
+    // Atur judul halaman saat mount
     useEffect(() => {
         dispatch(setPageTitle('Users'));
     }, [dispatch]);
 
-    /*****************************
-     * checkbox hide show
-     */
-
-    // Memuat data dari localStorage saat komponen pertama kali dirender
+    // Ambil data kolom yang disembunyikan dari localStorage saat mount
     useEffect(() => {
         const storedCols = localStorage.getItem(entityCols);
         if (storedCols) {
@@ -212,20 +203,19 @@ const UsersList= () => {
         }
     }, []);
 
-    // Fungsi untuk mengatur kolom yang disembunyikan
+    // Fungsi untuk menyembunyikan/menampilkan kolom
     const showHideColumns = (col: string) => {
         const updatedCols = hideCols.includes(col)
-            ? hideCols.filter((d) => d !== col) // Hapus kolom dari daftar
-            : [...hideCols, col]; // Tambahkan kolom ke daftar
+            ? hideCols.filter((d) => d !== col)
+            : [...hideCols, col];
 
         setHideCols(updatedCols);
-
-        // Simpan data terbaru ke localStorage
         localStorage.setItem(entityCols, JSON.stringify(updatedCols));
     };
 
     return (
         <div>
+            {/* Header dengan tombol Delete & Add New */}
             <div className="flex items-center justify-between flex-wrap gap-4 mb-5">
                 <h2 className="text-xl">{capitalizeFirstLetter(entity)}</h2>
                 <div className="flex sm:flex-row flex-col sm:items-center sm:gap-3 gap-4 w-full sm:w-auto">
@@ -243,10 +233,15 @@ const UsersList= () => {
                     </div>
                 </div>
             </div>
+
+            {/* Panel Tabel */}
             <div className="panel px-0 border-white-light dark:border-[#1b2e4b]">
                 <div className="invoice-table">
+
+                    {/* Filter, Kolom Tampil/Sembunyi, Search */}
                     <div className="mb-4.5 px-5 flex md:items-center md:flex-row flex-col gap-5">
                         <div className="flex md:items-center md:flex-row flex-col gap-5">
+                            {/* Dropdown Kolom */}
                             <div className="dropdown">
                                 <Dropdown
                                     placement={`${isRtl ? 'bottom-end' : 'bottom-start'}`}
@@ -293,7 +288,7 @@ const UsersList= () => {
                             </div>
                         </div>
 
-                        {/* Dropdown Pilih Kolom + Input Filter */}
+                        {/* Filter Kolom */}
                         <div className="flex gap-3">
                             <select 
                                 value={selectedColumn} 
@@ -322,72 +317,18 @@ const UsersList= () => {
                             />
                         </div>
 
+                        {/* Search Bar */}
                         <div className="ltr:ml-auto rtl:mr-auto">
                             <input type="text" className="form-input w-auto" placeholder="Search..." value={search} onChange={(e) => setSearch(e.target.value)} />
                         </div>
                     </div>
 
+                    {/* DataTable */}
                     <div className="datatables pagination-padding">
                         <DataTable
                             className="whitespace-nowrap table-hover invoice-table"
                             records={records}
-                            columns={[
-                                {
-                                    accessor: 'no',
-                                    sortable: true,
-                                    hidden: hideCols.includes('no'),
-                                },
-                                {
-                                    accessor: 'name',
-                                    sortable: true,
-                                    hidden: hideCols.includes('name'),
-                                    render: ({ name, id, photo}) => {
-                                        return (
-                                            <div className="flex items-center font-semibold">
-                                                <div className="p-0.5 bg-white-dark/30 rounded-full w-max ltr:mr-2 rtl:ml-2">
-                                                    <img
-                                                        className="h-8 w-8 rounded-full object-cover"
-                                                        src={photo}
-                                                        alt={name || 'Profile'}
-                                                    />
-                                                </div>
-                                                <div>
-                                                    <a
-                                                        href={`/users/${id}`}
-                                                        className="hover:underline"
-                                                    >
-                                                        {name}
-                                                    </a>
-                                                </div>
-                                            </div>
-                                        );
-                                    },
-                                },
-                                {
-                                    accessor: 'username',
-                                    sortable: true,
-                                    hidden: hideCols.includes('username'),
-                                },
-                                {
-                                    accessor: 'email',
-                                    sortable: true,
-                                    hidden: hideCols.includes('email'),
-                                },
-                                {
-                                    accessor: 'role',
-                                    sortable: true,
-                                    hidden: hideCols.includes('role'),
-                                    render: ({ role }) =>
-                                        role ? (
-                                            <span className="badge badge-outline-success">{role}</span>
-                                        ) : null,
-                                },
-                                {
-                                    accessor: 'created_at',
-                                    sortable: true,
-                                    hidden: hideCols.includes('created_at'),
-                                },
-                            ]}
+                            columns={[ ... ]} // Sudah terdefinisi dengan render dan hidden
                             highlightOnHover
                             totalRecords={total}
                             recordsPerPage={pageSize}

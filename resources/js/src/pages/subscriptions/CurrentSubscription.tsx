@@ -13,7 +13,6 @@ import { setPageTitle } from '../../store/themeConfigSlice';
 import { useGetPaymentHistoryQuery } from '../../redux/features/payment-histories/paymentHistoriesApi';
 import PaymentHistoryTable from './PaymentHistoryTable';
 
-// ... (keep your existing icons)
 
 interface InitialQuota {
     transactions: number;
@@ -22,7 +21,7 @@ interface InitialQuota {
     stores: number;
 }
 
-// Icons
+// Komponen Icon (SVG) untuk digunakan di antarmuka pengguna
 const IconInbox = () => (
     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
         <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" />
@@ -43,6 +42,7 @@ const IconCreditCard = () => (
     </svg>
 );
 
+// Fungsi untuk memulai proses pembayaran dan menambahkan kuota
 const handleAddQuota = async (quota: { additional_transactions: number; additional_products: number; additional_employees: number; additional_stores: number }) => {
     try {
         const response = await fetch(`${import.meta.env.VITE_SERVER_URI_BASE}api/subscription/add-quota`, {
@@ -75,8 +75,9 @@ const handleAddQuota = async (quota: { additional_transactions: number; addition
     }
 };
 
+// Komponen utama untuk menampilkan informasi paket dan histori transaksi
 const CurrentSubscription = () => {
-    // entity localstorage
+    // Mengambil data entity dari path URL untuk digunakan pada localStorage
     const location = useLocation();
     const pathnames = location.pathname.split('/').filter((x) => x);
     const entity = pathnames[0];
@@ -86,10 +87,10 @@ const CurrentSubscription = () => {
     const entityFilterColumn = `${entity}_filter_column`;
     const entityFilterValue = `${entity}_filter_value`;
 
-    // state
+    // State untuk berbagai keperluan (halaman, pencarian, sorting, dll)
     const [page, setPage] = useState<number>(() => {
         const storedPage = localStorage.getItem(entityPage);
-        return storedPage ? parseInt(storedPage, 10) : 1; // Konversi ke number, default ke 1
+        return storedPage ? parseInt(storedPage, 10) : 1; // default ke 1 jika tidak ada
     });
     const [search, setSearch] = useState(() => {
         return localStorage.getItem(`${entity}_search`) || '';
@@ -106,14 +107,12 @@ const CurrentSubscription = () => {
     const isRtl = useSelector((state: IRootState) => state.themeConfig.rtlClass) === 'rtl' ? true : false;
     const [selectedColumn, setSelectedColumn] = useState<string>(() => {
         return localStorage.getItem(`${entity}_filter_column`) || '';
-    }); // Kolom yang difilter
+    });
     const [filterValue, setFilterValue] = useState<string>(() => {
         return localStorage.getItem(`${entity}_filter_value`) || '';
-    }); // nilai filter
+    });
 
-    //page
-
-    //data
+    // Query API untuk mengambil histori pembayaran dengan filter & sorting
     const { data, refetch } = useGetPaymentHistoryQuery(
         {
             page,
@@ -125,6 +124,8 @@ const CurrentSubscription = () => {
         },
         { refetchOnMountOrArgChange: true }
     );
+
+    // Daftar kolom tabel histori
     const cols = [
         { accessor: 'no', title: 'No' },
         { accessor: 'order_id', title: 'Order ID' },
@@ -137,31 +138,23 @@ const CurrentSubscription = () => {
         { accessor: 'created_at', title: 'Created At' },
     ];
 
-    /*****************************
-     * search
-     */
-
+    // Menyimpan nilai pencarian ke localStorage saat berubah
     useEffect(() => {
         localStorage.setItem(`${entity}_search`, search);
     }, [search]);
 
-    /*****************************
-     * filter
-     */
-
+    // Menyimpan nilai filter ke localStorage saat berubah
     useEffect(() => {
         localStorage.setItem(entityFilterColumn, selectedColumn);
         localStorage.setItem(entityFilterValue, filterValue);
     }, [selectedColumn, filterValue]);
 
-    /*****************************
-     * sort
-     */
-
+    // Menyimpan status sorting ke localStorage
     useEffect(() => {
         localStorage.setItem(`${entitySort}`, JSON.stringify(sortStatus));
     }, [sortStatus]);
 
+    // Memuat sorting awal dari localStorage jika ada
     useEffect(() => {
         const storedSort = localStorage.getItem(`${entitySort}`);
         if (storedSort) {
@@ -169,18 +162,12 @@ const CurrentSubscription = () => {
         }
     }, []);
 
-    /*****************************
-     * delete
-     */
-
+    // Fungsi untuk hapus data
     const deleteRow = () => {
         deleteConfirmation(selectedRecords, deleteUser, refetch);
     };
 
-    /*****************************
-     * page
-     */
-
+    // State dan logika pagination
     const [pageSize, setPageSize] = useState(10);
     const [initialRecords, setInitialRecords] = useState<any[]>([]);
     useEffect(() => {
@@ -189,7 +176,6 @@ const CurrentSubscription = () => {
     const [records, setRecords] = useState(initialRecords);
     const [selectedRecords, setSelectedRecords] = useState<any>([]);
 
-    // Muat data awal dari localStorage saat komponen pertama kali dirender
     useEffect(() => {
         const storedPage = localStorage.getItem(entityPage);
         if (storedPage) {
@@ -197,30 +183,21 @@ const CurrentSubscription = () => {
         }
     }, []);
 
-    // Simpan nilai `page` ke localStorage saat berubah
     useEffect(() => {
         localStorage.setItem(entityPage, String(page));
     }, [page]);
 
-    // Perbarui data `records` setiap kali `page` atau `pageSize` berubah
     useEffect(() => {
         const from = (page - 1) * pageSize;
         const to = from + pageSize;
         setRecords(initialRecords);
     }, [page, pageSize, initialRecords]);
 
-    /*****************************
-     * items
-     */
-
+    // Memetakan data dari API ke format tabel
     useEffect(() => {
         if (data?.data) {
             const mappedItems = data.data.map((d: any, index: number) => {
-                // Buat objek berdasarkan kolom yang telah didefinisikan
-                let mappedObject: { [key: string]: any } = {
-                    id: d.id,
-                };
-
+                let mappedObject: { [key: string]: any } = { id: d.id };
                 cols.forEach((col) => {
                     if (col.accessor === 'created_at') {
                         mappedObject[col.accessor] = new Intl.DateTimeFormat('id-ID', {
@@ -242,7 +219,6 @@ const CurrentSubscription = () => {
                         mappedObject[col.accessor] = d[col.accessor];
                     }
                 });
-
                 return mappedObject;
             });
 
@@ -251,16 +227,12 @@ const CurrentSubscription = () => {
         }
     }, [data, page, pageSize]);
 
-    // Mengatur judul halaman
+    // Atur judul halaman
     useEffect(() => {
         dispatch(setPageTitle('Users'));
     }, [dispatch]);
 
-    /*****************************
-     * checkbox hide show
-     */
-
-    // Memuat data dari localStorage saat komponen pertama kali dirender
+    // Menyimpan/menampilkan kolom tabel
     useEffect(() => {
         const storedCols = localStorage.getItem(entityCols);
         if (storedCols) {
@@ -268,23 +240,16 @@ const CurrentSubscription = () => {
         }
     }, []);
 
-    // Fungsi untuk mengatur kolom yang disembunyikan
     const showHideColumns = (col: string) => {
         const updatedCols = hideCols.includes(col)
-            ? hideCols.filter((d) => d !== col) // Hapus kolom dari daftar
-            : [...hideCols, col]; // Tambahkan kolom ke daftar
-
+            ? hideCols.filter((d) => d !== col)
+            : [...hideCols, col];
         setHideCols(updatedCols);
-
-        // Simpan data terbaru ke localStorage
         localStorage.setItem(entityCols, JSON.stringify(updatedCols));
     };
 
-    // ===================
-    // ===================
-    // ===================
-    // ===================
-
+    // ================
+    // Inisialisasi dan ambil data langganan & statistik quota
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
     const [subscription, setSubscription] = useState<any>(null);
@@ -294,7 +259,7 @@ const CurrentSubscription = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const API_URL = `${import.meta.env.VITE_SERVER_URI_BASE}api`;
 
-    // Load Midtrans script
+    // Load Midtrans script untuk pembayaran
     useEffect(() => {
         const clientKey = import.meta.env.MIDTRANS_CLIENT_KEY;
         const script = document.createElement('script');
@@ -310,40 +275,28 @@ const CurrentSubscription = () => {
 
     const [stats, setStats] = useState<any>();
 
-    // First, modify your useEffect to fetch the stats data
+    // Ambil data subscription, stats, dan kuota awal
     useEffect(() => {
         const fetchData = async () => {
             try {
-                // Fetch current subscription
                 const subResponse = await fetch(`${API_URL}/subscription/current`, {
-                    headers: {
-                        Authorization: `Bearer ${localStorage.getItem('token')}`,
-                    },
+                    headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
                 });
-
                 if (!subResponse.ok) throw new Error('Gagal mengambil data paket');
                 const subData = await subResponse.json();
                 setSubscription(subData.subscription);
 
-                // Fetch statistics data
                 const statsResponse = await fetch(`${API_URL}/get-onwer-quota`, {
-                    headers: {
-                        Authorization: `Bearer ${localStorage.getItem('token')}`,
-                    },
+                    headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
                 });
-
                 if (statsResponse.ok) {
                     const statsData = await statsResponse.json();
                     setStats(statsData);
                 }
 
-                // Fetch last payment history to get initial quota
                 const paymentResponse = await fetch(`${API_URL}/payment-history/last`, {
-                    headers: {
-                        Authorization: `Bearer ${localStorage.getItem('token')}`,
-                    },
+                    headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
                 });
-
                 if (paymentResponse.ok) {
                     const paymentData = await paymentResponse.json();
                     if (paymentData.quota_details) {
@@ -361,10 +314,10 @@ const CurrentSubscription = () => {
                 setLoading(false);
             }
         };
-
         fetchData();
     }, []);
 
+    // Tangani notifikasi dari Midtrans setelah redirect selesai pembayaran
     useEffect(() => {
         const paymentNotification = async () => {
             const orderId = searchParams.get('order_id');
@@ -392,16 +345,10 @@ const CurrentSubscription = () => {
                             signature_key: 'abc123...',
                             email: 'email@gmail.com',
                             order_id: orderId,
-                            //   gross_amount: calculateTotalPrice(),
-                            //   custom_field1: quota.transactions,
-                            //   custom_field2: quota.products,
-                            //   custom_field3: quota.employees,
-                            //   custom_field4: quota.stores,
                         }),
                     });
 
                     if (response.ok && transactionStatus == 'settlement') {
-                        // fetchSubscription();
                         Swal.fire('Success', 'Payment Success', 'success');
                     }
                     navigate('/current-subs', { replace: true });
@@ -410,7 +357,6 @@ const CurrentSubscription = () => {
                 }
             }
         };
-
         paymentNotification();
     }, [searchParams, navigate, API_URL]);
 
@@ -418,82 +364,103 @@ const CurrentSubscription = () => {
     if (error) return <div className="text-center py-8 text-red-600">{error}</div>;
     if (!subscription) return <div className="text-center py-8">There are no active packages.</div>;
 
+    // Hitung jumlah hari aktif paket
     const totalDays = Math.ceil((new Date(subscription.end_date).getTime() - new Date(subscription.start_date).getTime()) / (1000 * 60 * 60 * 24));
 
     return (
+        // Komponen utama yang menampilkan info langganan dan kuota pengguna,
+        // serta tabel riwayat pembayaran dan modal penambahan kuota.
+        
         <div>
+            {/* Grid 2 kolom (1 kolom di mobile, 2 kolom di desktop) */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Komponen kartu informasi langganan */}
                 <SubscriptionInfoCard
-                    startDate={subscription.start_date}
-                    endDate={subscription.end_date}
-                    remainingDays={subscription.remaining_days}
-                    totalDays={totalDays}
-                    onAddQuota={() => setIsModalOpen(true)}
+                    startDate={subscription.start_date} // Tanggal mulai langganan
+                    endDate={subscription.end_date} // Tanggal berakhir langganan
+                    remainingDays={subscription.remaining_days} // Sisa hari aktif
+                    totalDays={totalDays} // Total hari dari awal sampai akhir langganan
+                    onAddQuota={() => setIsModalOpen(true)} // Fungsi untuk membuka modal tambah kuota
                 />
 
+                {/* Panel yang menampilkan penggunaan kuota */}
                 <div className="panel">
                     <h2 className="text-xl font-semibold mb-4">Quota</h2>
                     <div className="space-y-6">
+                        {/* Komponen untuk progress penggunaan kuota transaksi */}
                         <QuotaProgressBar
-                            icon={<IconInbox />}
-                            title="Quota Transactions"
-                            initial={initialQuota?.transactions || subscription.quota_transactions}
-                            used={stats.total_orders}
-                            current={subscription.quota_transactions}
-                            color="blue"
+                            icon={<IconInbox />} // Icon untuk kuota transaksi
+                            title="Quota Transactions" // Judul progress bar
+                            initial={initialQuota?.transactions || subscription.quota_transactions} // Kuota awal transaksi
+                            used={stats.total_orders} // Jumlah transaksi yang sudah digunakan
+                            current={subscription.quota_transactions} // Kuota transaksi saat ini
+                            color="blue" // Warna progress bar
                         />
+
+                        {/* Komponen untuk progress penggunaan kuota produk */}
                         <QuotaProgressBar
-                            icon={<IconTag />}
+                            icon={<IconTag />} // Icon untuk kuota produk
                             title="Quota Products"
-                            initial={initialQuota?.products || subscription.quota_products}
-                            used={stats.total_products}
-                            current={subscription.quota_products}
+                            initial={initialQuota?.products || subscription.quota_products} // Kuota awal produk
+                            used={stats.total_products} // Jumlah produk yang sudah digunakan
+                            current={subscription.quota_products} // Kuota produk saat ini
                             color="green"
                         />
+
+                        {/* Komponen untuk progress penggunaan kuota karyawan */}
                         <QuotaProgressBar
-                            icon={<IconCreditCard />}
+                            icon={<IconCreditCard />} // Icon untuk kuota karyawan
                             title="Quota Employees"
-                            initial={initialQuota?.employees || subscription.quota_employees}
-                            used={stats.total_employees}
-                            current={subscription.quota_employees}
+                            initial={initialQuota?.employees || subscription.quota_employees} // Kuota awal karyawan
+                            used={stats.total_employees} // Jumlah karyawan yang sudah digunakan
+                            current={subscription.quota_employees} // Kuota karyawan saat ini
                             color="purple"
                         />
+
+                        {/* Komponen untuk progress penggunaan kuota toko */}
                         <QuotaProgressBar
-                            icon={<IconInbox />}
+                            icon={<IconInbox />} // Icon untuk kuota toko
                             title="Quota Stores"
-                            initial={initialQuota?.stores || subscription.quota_stores}
-                            used={stats.total_stores}
-                            current={subscription.quota_stores}
+                            initial={initialQuota?.stores || subscription.quota_stores} // Kuota awal toko
+                            used={stats.total_stores} // Jumlah toko yang sudah digunakan
+                            current={subscription.quota_stores} // Kuota toko saat ini
                             color="yellow"
                         />
                     </div>
                 </div>
             </div>
 
-            <AddQuotaModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onAddQuota={handleAddQuota} />
+            {/* Modal tambah kuota */}
+            <AddQuotaModal
+                isOpen={isModalOpen} // Status terbuka/tidaknya modal
+                onClose={() => setIsModalOpen(false)} // Fungsi untuk menutup modal
+                onAddQuota={handleAddQuota} // Fungsi yang dijalankan saat submit penambahan kuota
+            />
 
+            {/* Tabel riwayat pembayaran */}
             <div className="mt-6">
                 <PaymentHistoryTable
-                    data={records}
-                    totalRecords={total}
-                    page={page}
-                    pageSize={pageSize}
-                    sortStatus={sortStatus}
-                    hideCols={hideCols}
-                    isRtl={isRtl}
-                    onPageChange={setPage}
-                    onSortStatusChange={setSortStatus}
-                    onSelectedRecordsChange={setSelectedRecords}
-                    selectedColumn={selectedColumn}
-                    filterValue={filterValue}
-                    onColumnChange={setSelectedColumn}
-                    onFilterChange={setFilterValue}
-                    search={search}
-                    onSearchChange={setSearch}
-                    onToggleColumn={showHideColumns}
+                    data={records} // Data transaksi pembayaran
+                    totalRecords={total} // Total jumlah transaksi
+                    page={page} // Halaman aktif saat ini
+                    pageSize={pageSize} // Jumlah item per halaman
+                    sortStatus={sortStatus} // Status urutan kolom
+                    hideCols={hideCols} // Kolom yang disembunyikan
+                    isRtl={isRtl} // Apakah tampilan Right-to-Left (untuk bahasa Arab, Ibrani, dll)
+                    onPageChange={setPage} // Fungsi ganti halaman
+                    onSortStatusChange={setSortStatus} // Fungsi ubah urutan kolom
+                    onSelectedRecordsChange={setSelectedRecords} // Fungsi untuk update data yang dipilih
+                    selectedColumn={selectedColumn} // Kolom yang sedang difilter
+                    filterValue={filterValue} // Nilai filter
+                    onColumnChange={setSelectedColumn} // Fungsi ubah kolom filter
+                    onFilterChange={setFilterValue} // Fungsi ubah nilai filter
+                    search={search} // Nilai pencarian
+                    onSearchChange={setSearch} // Fungsi ubah kata kunci pencarian
+                    onToggleColumn={showHideColumns} // Fungsi untuk tampil/sembunyikan kolom
                 />
             </div>
         </div>
+
     );
 };
 
