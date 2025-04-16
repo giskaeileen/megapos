@@ -19,6 +19,7 @@ class EmployeeController extends Controller
 {
     public function __construct()
     {
+        // Middleware untuk otorisasi berdasarkan permission
         $this->middleware('can:Create Employee')->only(['store']);
         $this->middleware('can:Read Employee')->only(['index', 'show']);
         $this->middleware('can:Update Employee')->only(['update']);
@@ -26,19 +27,22 @@ class EmployeeController extends Controller
     }
 
     /**
-     * Display a listing of the resource.
+     * Menampilkan daftar karyawan untuk toko tertentu.
      */
     public function index($storeId)
     {
+        // Ambil jumlah baris per halaman dari query string
         $row = (int) request('row', 10);
 
+        // Validasi jumlah baris
         if ($row < 1 || $row > 100) {
             abort(400, 'The per-page parameter must be an integer between 1 and 100.');
         }
 
-        //$storeId = slug
+        // Konversi slug store menjadi ID
         $store_id = Store::where('slug', $storeId)->first()->id;
 
+        // Ambil filter dari query string
         $filters = request()->only([
             'search',
             'name',
@@ -50,21 +54,20 @@ class EmployeeController extends Controller
             'city',
         ]);
 
-        // Query Employee dan relasi User
+        // Ambil daftar karyawan dengan relasi ke user
         $employees = Employee::filter($filters)
-            ->with(['user:name,email,photo,id']) // Memuat relasi User dengan atribut tertentu
-            // ->where('store_id', $store_id)
+            ->with(['user:name,email,photo,id'])
             ->where('employees.store_id', $store_id)
             ->sortable()
             ->paginate($row)
             ->appends(request()->query());
 
-        // Tambahkan atribut name, email, dan photo ke setiap employee
+        // Transformasi data agar atribut user muncul di root employee
         $employees->getCollection()->transform(function ($employee) {
             $employee->name = $employee->user->name ?? null;
             $employee->email = $employee->user->email ?? null;
             $employee->photo = $employee->user->photo ?? null;
-            unset($employee->user); // Opsional: Hilangkan relasi jika tidak dibutuhkan
+            unset($employee->user);
             return $employee;
         });
 
@@ -72,27 +75,30 @@ class EmployeeController extends Controller
     }
 
     /**
-     * Store a newly created resource in storage.
+     * Menyimpan data karyawan baru.
      */
-
     public function store($storeId, Request $request)
     {
+        // Ambil user yang sedang login
         $user = $request->user();
 
+        // Cek apakah user memiliki paket aktif
         $subscription = SubscriptionQuota::where('user_id', $user->id)
             ->where('end_date', '>', Carbon::now())
             ->latest()
             ->first();
 
+        // Jika tidak ada paket aktif
         if (!$subscription) {
             return response()->json([
                 'message' => 'There are no active packages.',
             ], 404);
         }
 
+        // Ambil semua ID toko milik user
         $storeIds = $user->stores()->pluck('id');
 
-        // Count data from all stores
+        // Hitung statistik data
         $statistics = [
             'total_stores' => $user->stores()->count(),
             'total_orders' => Order::whereIn('store_id', $storeIds)->count(),
@@ -108,25 +114,26 @@ class EmployeeController extends Controller
             ])->get()
         ];
 
-        // Check quota limits
+        // Validasi apakah melebihi kuota
         $quotaExceeded = [];
-        
+
         if ($statistics['total_stores'] >= $subscription->quota_stores) {
             $quotaExceeded['stores'] = 'Jumlah toko melebihi kuota';
         }
-        
+
         if ($statistics['total_orders'] >= $subscription->quota_transactions) {
             $quotaExceeded['transactions'] = 'Jumlah transaksi melebihi kuota';
         }
-        
+
         if ($statistics['total_products'] >= $subscription->quota_products) {
             $quotaExceeded['products'] = 'Jumlah produk melebihi kuota';
         }
-        
+
         if ($statistics['total_employees'] >= $subscription->quota_employees) {
             $quotaExceeded['employees'] = 'Jumlah karyawan melebihi kuota';
         }
 
+        // Jika ada pelanggaran kuota, kirim respons error
         if (!empty($quotaExceeded)) {
             return response()->json([
                 'message' => 'Quota Exceeded',
@@ -141,7 +148,7 @@ class EmployeeController extends Controller
             ], 422);
         }
 
-        // Validasi request
+        // Validasi input request
         $validator = Validator::make($request->all(), [
             'photo' => 'nullable|image|file|max:1024',
             'name' => 'required|string|max:50',
@@ -156,7 +163,7 @@ class EmployeeController extends Controller
             'password_confirmation' => 'required_with:password|same:password',
         ]);
 
-        // Jika validasi gagal, kembalikan error
+        // Jika validasi gagal
         if ($validator->fails()) {
             return response()->json([
                 'message' => 'Validation error',
@@ -168,18 +175,17 @@ class EmployeeController extends Controller
         $validatedData['password'] = Hash::make($validatedData['password']);
 
         /**
-         * Handle upload image with Storage.
+         * Upload foto jika tersedia.
          */
         if ($file = $request->file('photo')) {
             $fileName = hexdec(uniqid()).'.'.$file->getClientOriginalExtension();
             $path = 'public/profile/';
-
             $file->storeAs($path, $fileName);
             $validatedData['photo'] = $fileName;
         }
 
         /**
-         * Buat User di tabel `users`
+         * Simpan user ke tabel `users`
          */
         $user = User::create([
             'name' => $validatedData['name'],
@@ -190,11 +196,11 @@ class EmployeeController extends Controller
 
         $user->assignRole('Employee');
 
-        //$storeId = slug
+        // Ambil ID store dari slug
         $store_id = Store::where('slug', $storeId)->first()->id;
 
         /**
-         * Buat Employee di tabel `employees`
+         * Simpan employee ke tabel `employees`
          */
         $employee = Employee::create([
             'user_id' => $user->id, 
@@ -207,48 +213,42 @@ class EmployeeController extends Controller
             'store_id' => $store_id,
         ]);
 
-        // Respons success
         return response()->json($employee, 201);
     }
 
     /**
-     * Display the specified resource.
+     * Menampilkan detail dari employee tertentu.
      */
-
     public function show($storeId, $id)
     {
-        // Cari Employee berdasarkan ID
+        // Cari employee berdasarkan ID
         $employee = Employee::find($id);
 
-        // Jika Employee tidak ditemukan, kembalikan respons 404
         if (!$employee) {
             return response()->json([
                 'message' => 'Employee not found'
             ], 404);
         }
 
-        // Ambil data User yang terkait dengan Employee
+        // Ambil data user terkait employee
         $user = User::find($employee->user_id);
 
-        // Tambahkan atribut name, email, dan photo dari User ke Employee
         $employee->name = $user->name ?? null;
         $employee->email = $user->email ?? null;
         $employee->photo = $user->photo ?? null;
 
-        // Kembalikan respons JSON
         return response()->json($employee);
     }
 
     /**
-     * Update the specified resource in storage.
+     * Memperbarui data employee.
      */
-
     public function update($storeId, $id, Request $request)
     {
-        // Temukan Employee berdasarkan ID, termasuk relasi ke User
+        // Cari employee dan relasi user
         $employee = Employee::with('user')->findOrFail($id);
 
-        // Validasi request
+        // Validasi input
         $validator = Validator::make($request->all(), [
             'photo' => 'nullable|image|file|max:1024',
             'name' => 'required|string|max:50',
@@ -259,19 +259,9 @@ class EmployeeController extends Controller
             'vacation' => 'max:50|nullable',
             'city' => 'max:50',
             'address' => 'required|max:100',
-            // 'password' => 'required|min:6|confirmed',
-            // 'password_confirmation' => 'required_with:password|same:password',
         ]);
 
-        // Jika validasi gagal, kembalikan error
-        if ($validator->fails()) {
-            return response()->json([
-                'message' => 'Validation error',
-                'errors' => $validator->errors(),
-            ], 422);
-        }
-
-        // Jika ada perubahan password, tambahkan validasi
+        // Tambahkan validasi password jika diperlukan
         if ($request->password || $request->password_confirmation) {
             $validator->addRules([
                 'password' => 'min:6|required_with:password_confirmation',
@@ -279,42 +269,44 @@ class EmployeeController extends Controller
             ]);
         }
 
-        // Validasi data yang sudah diperiksa
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => 'Validation error',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
         $validatedData = $validator->validated();
 
-        // Hash password jika ada perubahan
         if (isset($request->password)) {
             $validatedData['password'] = Hash::make($request->password);
         }
 
         /**
-         * Handle upload image with Storage.
+         * Upload foto baru jika diunggah
          */
         if ($file = $request->file('photo')) {
             $fileName = hexdec(uniqid()) . '.' . $file->getClientOriginalExtension();
             $path = 'public/profile/';
 
-            // Hapus foto lama di Storage jika ada
+            // Hapus foto lama jika ada
             if ($employee->user->photo) {
                 Storage::delete($path . $employee->user->photo);
             }
 
-            // Simpan foto baru
             $file->storeAs($path, $fileName);
             $validatedData['photo'] = $fileName;
         }
 
         /**
-         * Update User data.
+         * Update data user
          */
         $userData = [
             'name' => $validatedData['name'],
             'email' => $validatedData['email'],
             'photo' => $validatedData['photo'] ?? $employee->user->photo,
-            // 'password' => Hash::make($validatedData['password_confirmation']),
         ];
 
-        // Hash password hanya jika ada perubahan
         if ($request->filled('password')) {
             $userData['password'] = Hash::make($validatedData['password']);
         }
@@ -322,7 +314,7 @@ class EmployeeController extends Controller
         $employee->user->update($userData);
 
         /**
-         * Update Employee data.
+         * Update data employee
          */
         $employee->update([
             'phone' => $validatedData['phone'],
@@ -333,7 +325,6 @@ class EmployeeController extends Controller
             'address' => $validatedData['address'],
         ]);
 
-        // Respons sukses
         return response()->json([
             'message' => 'Employee has been updated!',
             'employee' => $employee,
@@ -341,14 +332,14 @@ class EmployeeController extends Controller
     }
 
     /**
-     * Remove the specified resource from storage.
+     * Menghapus employee dan user terkait.
      */
     public function destroy($storeId, $id)
     {
         $employee = Employee::findOrFail($id);
 
         /**
-         * Delete photo if exists.
+         * Hapus foto jika ada
          */
         if($employee->photo){
             Storage::delete('public/employees/' . $employee->photo);
@@ -362,7 +353,6 @@ class EmployeeController extends Controller
             $user->delete();
         }
 
-        // Respons sukses
         return response()->json([
             'message' => 'Employee has been deleted!',
         ], 200);
