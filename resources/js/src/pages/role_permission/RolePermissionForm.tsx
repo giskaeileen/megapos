@@ -11,34 +11,31 @@ import { useGetSingleRolePermissionQuery, useUpdateRolePermissionMutation } from
 
 const RolePermissionForm= () => {
     const navigate = useNavigate();
-    const { id } = useParams();  
+    const { id } = useParams(); // Mengambil ID dari URL
+    // Ambil data role permission jika ID tersedia
     const { data } = useGetSingleRolePermissionQuery(id, { skip: !id });  // Menarik data jika ID ada
+    // Hook untuk melakukan update role permission
     const [updateRolePermission, { isSuccess: isUpdateSuccess, error: errorUpdate }] = useUpdateRolePermissionMutation();
-    // const [storeRoles, {
-    //     data: dataStore, 
-    //     error: errorStore, 
-    //     isSuccess: isSuccessStore 
-    // }] = useStoreRolesMutation()
 
     /*****************************
-     * validation 
+     * validation menggunakan Yup
      */
 
     const schema = Yup.object().shape({
         name: Yup.string()
             .required("Name is required"),
-            // .matches(/^[a-zA-Z\s]*$/, "Name can only contain letters and spaces"),
     });
 
     /*****************************
      * form data 
      */
 
+    // Ambil ID dari permission yang dimiliki oleh role
     const rolePermissionIds = data?.role?.permissions.map((p: any) => p.id);
 
     // Menangani formik
     const formik = useFormik({
-        enableReinitialize: true,
+        enableReinitialize: true, // Supaya Formik update initialValues saat data beruba
         initialValues: {
             name: data?.role.name || '',
             permissions: data?.permissions?.map((permission: any) => ({
@@ -48,21 +45,7 @@ const RolePermissionForm= () => {
             })),
         },
         validationSchema: schema,
-        // onSubmit: async (values) => {
-        //     const selectedPermissions = values.permissions
-        //         .filter((permission: any) => permission.selected)
-        //         .map((permission: any) => ({ id: permission.id }));
-        //     const formData = new FormData();
-        //     formData.append("name", values.name);
-        //     formData.append("permissions", JSON.stringify(selectedPermissions)); 
-
-        //     if (id) {
-        //         formData.append("_method", "PUT");
-        //         await updateRolePermission({id, data: formData});
-        //     // } else {
-        //     //     await storeRoles(formData);
-        //     }
-        // }
+        // Saat form disubmit
         onSubmit: async (values) => {
             // Mengambil permissions yang dipilih, hanya mengirimkan name permission
             const selectedPermissions = values.permissions
@@ -78,6 +61,7 @@ const RolePermissionForm= () => {
                 formData.append("permissions[]", permissionName); // Kirim data sebagai array
             });
 
+            // Jika sedang dalam mode edit, kirim PUT
             if (id) {
                 formData.append("_method", "PUT");
                 await updateRolePermission({ id, data: formData });
@@ -88,21 +72,13 @@ const RolePermissionForm= () => {
     const { values, errors, touched, handleChange, handleSubmit } = formik;
 
     /*****************************
-     * status 
+     * status success dan eror
      */
 
     useEffect(() => {
-        // if (isSuccessStore) {
-        //     toast.success("Create Successfully")
-        //     navigate(`/${entity}/${dataStore?.id}`);
-        // }
         if (isUpdateSuccess) {
             toast.success("Update Successfully")
         }
-        // if (errorStore) {
-        //     const errorData = errorStore as any;
-        //     toast.error(errorData.data.message);
-        // }
         if (errorUpdate) {
             const errorData = errorUpdate as any;
             toast.error(errorData.data.message);
@@ -123,18 +99,12 @@ const RolePermissionForm= () => {
         dispatch(setPageTitle('File Upload Preview'));
     });
 
+    // Capitalize huruf pertama
     function capitalizeFirstLetter(str: string): string {
         return str.charAt(0).toUpperCase() + str.slice(1);
     }
 
-    // const groupedPermissions = formik.values.permissions ? 
-    //     formik.values.permissions.reduce((acc: any, permission: any) => {
-    //         const [entity, action] = permission.name.split(' ').reverse(); // Memisahkan "Create User"
-    //         acc[entity] = acc[entity] || [];
-    //         acc[entity].push({ ...permission, action });
-    //         return acc;
-    //     }, {}) : [];
-
+    // Grouping permission berdasarkan nama entitas
     const groupedPermissions = formik.values.permissions
         ? formik.values.permissions.reduce((acc: any, permission: any) => {
             const [action, ...entityParts] = permission.name.split(' '); // Pisahkan berdasarkan spasi
@@ -146,6 +116,7 @@ const RolePermissionForm= () => {
         }, {})
         : [];
 
+    // Checkbox untuk Select All
     const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
         const isChecked = e.target.checked;
         const updatedPermissions = values.permissions.map((permission: any) => ({
@@ -157,18 +128,20 @@ const RolePermissionForm= () => {
 
     return (
         <form onSubmit={handleSubmit} >
+            {/* Header Form Judul halaman & tombol Save */}
             <div className="flex items-center justify-between flex-wrap gap-4 mb-5">
-                <h2 className="text-xl">{capitalizeFirstLetter(entity)}</h2>
+                <h2 className="text-xl">{capitalizeFirstLetter(entity)}</h2> {/* Menampilkan judul berdasarkan entity, contoh: 'Role' */}
                 <div className="flex sm:flex-row flex-col sm:items-center sm:gap-3 gap-4 w-full sm:w-auto">
                     <div className="relative">
                         <div className="flex items-center gap-2">
                             <button type="submit" className="btn btn-primary">
-                                Save 
+                                Save {/* Tombol untuk submit form */}
                             </button>
                         </div>
                     </div>
                 </div>
             </div>
+            {/* Form */}
             <div className="grid lg:grid-cols-6 grid-cols-1 gap-6">
                 <div className="grid lg:grid-cols-1 grid-cols-1 gap-6 col-span-1 lg:col-span-4">
                     {/* Grid */}
@@ -176,6 +149,7 @@ const RolePermissionForm= () => {
                         <div className="mb-5">
                             <div className="space-y-5">
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    {/* Input Nama Role */}
                                     <div>
                                         <label htmlFor="name">Name</label>
                                         <input
@@ -188,45 +162,40 @@ const RolePermissionForm= () => {
                                                 handleChange(e); // Tetap gunakan handleChange dari Formik
                                             }}
                                         />
+                                        {/* Validasi error nama */}
                                         {errors.name && touched.name && typeof errors.name === 'string' && (
                                             <span className="text-red-500 block mt-2">{errors.name}</span>
                                         )}
                                     </div>
-                                    {/* <div className="lg:col-span-2">
-                                        <label htmlFor="permissions">Permissions</label>
-                                        <div>
-                                            <label className="flex items-center cursor-pointer">
-                                                <input type="checkbox" className="form-checkbox" defaultChecked />
-                                                <span className=" text-white-dark">Checkbox</span>
-                                            </label>
-                                        </div>
-                                    </div> */}
-                                    {/* <div className="grid gap-4"> */}
+                                    {/* Checkbox Select All */}
                                     <div className="grid items-end">
-                                        {/* <label htmlFor="name">Name</label> */}
                                         <label className="flex items-center cursor-pointer">
                                             <input
                                                 type="checkbox"
-                                                onChange={handleSelectAll}
+                                                onChange={handleSelectAll} // Handler untuk select/deselect semua permission
                                                 checked={values.permissions ? values.permissions.every((permission: any) => permission.selected) : false}
                                                 className="form-checkbox"
                                             />
-                                            <span>Select All</span>
+                                            <span>Select All</span> {/* Label untuk select all */}
                                         </label>
                                     </div>
+                                    {/* Daftar Permissions yang dikelompokkan per entitas */}
                                     <div className="lg:col-span-2">
                                         <label htmlFor="permissions">Permissions</label>
+                                        {/* Loop setiap group permission berdasarkan entity */}
                                         {Object.entries(groupedPermissions).map(([entity, permissions]: any) => (
                                         <div key={entity} className="mb-4">
-                                            <h3 className="font-bold text-lg">{entity}</h3>
+                                            <h3 className="font-bold text-lg">{entity}</h3> {/* Nama entitas */}
                                             <div className="flex items-center gap-4">
+                                            {/* Loop checkbox untuk setiap permission */}
                                             {permissions.map((permission: any) => (
                                                 <label key={permission.id} className="flex items-center gap-2">
                                                 <input
                                                     type="checkbox"
                                                     name={`permissions[${permission.id}].selected`}
-                                                    checked={permission.selected}
+                                                    checked={permission.selected} // Status checked sesuai field `selected`
                                                     onChange={(e) => {
+                                                    // Update status selected untuk permission yang diubah
                                                     const updatedPermissions = values.permissions.map((p: any) =>
                                                         p.id === permission.id ? { ...p, selected: e.target.checked } : p
                                                     );
@@ -234,7 +203,7 @@ const RolePermissionForm= () => {
                                                     }}
                                                     className="form-checkbox"
                                                 />
-                                                <span>{permission.action}</span>
+                                                <span>{permission.action}</span> {/* Menampilkan nama aksi seperti 'View', 'Edit', dll */}
                                                 </label>
                                             ))}
                                             </div>

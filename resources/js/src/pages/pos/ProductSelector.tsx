@@ -2,7 +2,16 @@ import React from 'react';
 import Select from 'react-select';
 import { useRef } from 'react';
 
+/**
+ * Komponen untuk memilih produk melalui dropdown menggunakan react-select.
+ * Menampilkan produk dan variasinya secara dinamis, serta menambahkan produk ke POS saat dipilih.
+ */
 const ProductSelector = ({ products, selectedOption2, setSelectedOption2, addPos }) => {
+  /**
+   * Fungsi untuk memformat produk dan variasinya ke dalam bentuk opsi Select.
+   * - Jika ada variasi: setiap variasi dijadikan opsi tersendiri.
+   * - Jika tidak ada variasi: produk langsung dijadikan opsi.
+   */
   const formatProductOptions = (products) => {
     return products?.data?.flatMap((product) => {
       if (product.product_variants.length > 0) {
@@ -35,8 +44,13 @@ const ProductSelector = ({ products, selectedOption2, setSelectedOption2, addPos
     }) || [];
   };
 
+  // Format opsi produk yang akan ditampilkan di dropdown
   const options = formatProductOptions(products);
 
+  /**
+   * Fungsi untuk filter pencarian berdasarkan label atau SKU.
+   * Menyesuaikan cara pencarian di dropdown saat user mengetikkan input.
+   */
   const filterOptions = (option, inputValue) => {
     const searchText = inputValue.toLowerCase();
     return (
@@ -45,6 +59,10 @@ const ProductSelector = ({ products, selectedOption2, setSelectedOption2, addPos
     );
   };
 
+  /**
+   * Fungsi untuk menampilkan label opsi secara custom.
+   * Menampilkan nama produk, harga, SKU, dan stok.
+   */
   const formatOptionLabel = ({ label, price, stock, sku }) => (
     <div>
       <div>{label}</div>
@@ -54,6 +72,7 @@ const ProductSelector = ({ products, selectedOption2, setSelectedOption2, addPos
     </div>
   );
 
+  // Styling khusus untuk komponen react-select
   const customStyles = {
     control: (base) => ({
       ...base,
@@ -71,8 +90,12 @@ const ProductSelector = ({ products, selectedOption2, setSelectedOption2, addPos
     }),
   };
 
+  // Ref untuk fokus ulang ke input setelah memilih produk
   const selectRef = useRef(null);
 
+  /**
+   * Menangani penekanan tombol Enter agar bisa reset input dan fokus kembali.
+   */
   const handleKeyDown = (event) => {
     if (event.key.code === "Enter") {
       event.preventDefault();
@@ -83,6 +106,11 @@ const ProductSelector = ({ products, selectedOption2, setSelectedOption2, addPos
     }
   };
 
+  /**
+   * Menangani saat produk dipilih dari dropdown:
+   * - Set produk terpilih
+   * - Tambahkan ke daftar POS
+   */
   const handleSelectChange = (selected) => {
     setSelectedOption2(selected);
     addPos(selected);
@@ -91,18 +119,18 @@ const ProductSelector = ({ products, selectedOption2, setSelectedOption2, addPos
   return (
     <div className="mt-2 mb-4 flex gap-2 items-center">
       <div className="w-full">
-        <Select
+      <Select
           placeholder="Select Product"
-          options={options}
-          filterOption={filterOptions}
-          formatOptionLabel={formatOptionLabel}
+          options={options} // Opsi produk hasil format
+          filterOption={filterOptions} // Custom filter berdasarkan SKU dan nama
+          formatOptionLabel={formatOptionLabel} // Custom tampilan label opsi
           menuPlacement="top"
-          styles={customStyles}
-          isClearable={true}
-          value={selectedOption2}
-          onChange={handleSelectChange}
-          onKeyDown={handleKeyDown}
-          ref={selectRef}
+          styles={customStyles} // Styling react-select
+          isClearable={true} // Bisa clear input
+          value={selectedOption2} // Nilai yang sedang dipilih
+          onChange={handleSelectChange} // Event saat memilih
+          onKeyDown={handleKeyDown} // Event saat tekan tombol
+          ref={selectRef} // Untuk fokus ulang
         />
       </div>
     </div>

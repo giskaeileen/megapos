@@ -1,17 +1,23 @@
+// Import React dan hooks bawaan
 import React, { useEffect, useState } from 'react';
 
+// Interface untuk props komponen QuotaForm
 interface QuotaFormProps {
-    onSubmit: (quota: { transactions: number; products: number; employees: number; stores: number }) => void;
+    onSubmit: (quota: { transactions: number; products: number; employees: number; stores: number }) => void; // Fungsi callback ketika form disubmit
     initialValues: {
         transactions: number;
         products: number;
         employees: number;
         stores: number;
-    };
+    }; // Nilai awal untuk form
 }
 
+// Komponen utama QuotaForm
 const QuotaForm: React.FC<QuotaFormProps> = ({ onSubmit, initialValues }) => {
+  // State untuk menyimpan data kuota yang diinputkan user
   const [quota, setQuota] = useState(initialValues);
+
+  // State untuk menyimpan error validasi masing-masing field
   const [errors, setErrors] = useState({
     transactions: '',
     products: '',
@@ -19,42 +25,46 @@ const QuotaForm: React.FC<QuotaFormProps> = ({ onSubmit, initialValues }) => {
     stores: ''
   });
 
+  // Effect untuk update state quota saat nilai awal berubah dari props
   useEffect(() => {
     setQuota(initialValues);
   }, [initialValues]);
 
+  // Fungsi validasi input berdasarkan nama field dan nilainya
   const validate = (name: string, value: number): boolean => {
     if (name === 'stores' && value < 1) {
-      setErrors(prev => ({...prev, [name]: 'Minimum 1 store required'}));
+      setErrors(prev => ({...prev, [name]: 'Minimum 1 store required'})); // Validasi khusus untuk store
       return false;
     } else if (value < 0) {
-      setErrors(prev => ({...prev, [name]: 'Cannot be negative'}));
+      setErrors(prev => ({...prev, [name]: 'Cannot be negative'})); // Validasi umum tidak boleh negatif
       return false;
     }
-    setErrors(prev => ({...prev, [name]: ''}));
+    setErrors(prev => ({...prev, [name]: ''})); // Clear error jika valid
     return true;
   };
 
+  // Fungsi handler saat user mengubah input
   const handleQuotaChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    const numValue = parseInt(value, 10) || 0;
-    validate(name, numValue);
+    const numValue = parseInt(value, 10) || 0; // Konversi ke integer
+    validate(name, numValue); // Validasi nilai input
     setQuota({
       ...quota,
-      [name]: numValue,
+      [name]: numValue, // Update state sesuai field yang berubah
     });
   };
 
+  // Fungsi handler saat form disubmit
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Validate all fields before submit
+
+    // Validasi semua field sebelum submit
     const isValid = Object.entries(quota).every(([name, value]) => {
       return validate(name, value);
     });
 
     if (isValid) {
-      onSubmit(quota);
+      onSubmit(quota); // Kirim data ke parent
     }
   };
 
@@ -65,9 +75,10 @@ const QuotaForm: React.FC<QuotaFormProps> = ({ onSubmit, initialValues }) => {
                 <p className="text-gray-600 mt-1">Configure your monthly usage limits. The transaction daily quota will reset every day until one month from settings</p>
             </div>
 
+            {/* Form untuk mengatur kuota */}
             <form onSubmit={handleSubmit} className="space-y-6">
                 <div className="grid md:grid-cols-2 gap-6">
-                    {/* Quota Transactions */}
+                    {/* Input kuota transaksi harian */}
                     <div className="space-y-2">
                         <div className="flex justify-between items-center">
                             <label htmlFor="transactions" className="block text-sm font-medium text-gray-700">
@@ -93,13 +104,11 @@ const QuotaForm: React.FC<QuotaFormProps> = ({ onSubmit, initialValues }) => {
                             </div>
                         </div>
                         <p className="text-xs text-gray-500 mt-1">
-                            {/* <span className="font-medium">English:</span> This daily quota will reset every day until one month from settings
-              <br /> */}
-                            {/* <span className="font-medium"></span> Kuota harian ini akan direset setiap hari hingga satu bulan dari pengaturan */}
+                            {/* Info kuota harian */}
                         </p>
                     </div>
 
-                    {/* Quota Products */}
+                    {/* Input kuota produk bulanan */}
                     <div className="space-y-2">
                         <div className="flex justify-between items-center">
                             <label htmlFor="products" className="block text-sm font-medium text-gray-700">
@@ -125,13 +134,11 @@ const QuotaForm: React.FC<QuotaFormProps> = ({ onSubmit, initialValues }) => {
                             </div>
                         </div>
                         <p className="text-xs text-gray-500 mt-1">
-                            {/* <span className="font-medium">English:</span> This monthly quota will be valid for one billing period */}
-                            {/* <br /> */}
-                            {/* <span className="font-medium"></span> Kuota bulanan ini berlaku untuk satu periode penagihan */}
+                            {/* Info kuota bulanan */}
                         </p>
                     </div>
 
-                    {/* Quota Employees */}
+                    {/* Input kuota karyawan bulanan */}
                     <div className="space-y-2">
                         <div className="flex justify-between items-center">
                             <label htmlFor="employees" className="block text-sm font-medium text-gray-700">
@@ -157,13 +164,11 @@ const QuotaForm: React.FC<QuotaFormProps> = ({ onSubmit, initialValues }) => {
                             </div>
                         </div>
                         <p className="text-xs text-gray-500 mt-1">
-                            {/* <span className="font-medium">English:</span> This monthly quota will be valid for one billing period
-              <br /> */}
-                            {/* <span className="font-medium"></span> Kuota bulanan ini berlaku untuk satu periode penagihan */}
+                            {/* Info kuota bulanan */}
                         </p>
                     </div>
 
-                    {/* Quota Stores */}
+                    {/* Input kuota toko bulanan */}
                     <div className="space-y-2">
                         <div className="flex justify-between items-center">
                             <label htmlFor="stores" className="block text-sm font-medium text-gray-700">
@@ -189,21 +194,12 @@ const QuotaForm: React.FC<QuotaFormProps> = ({ onSubmit, initialValues }) => {
                             </div>
                         </div>
                         <p className="text-xs text-gray-500 mt-1">
-                            {/* <span className="font-medium">English:</span> This monthly quota will be valid for one billing period
-              <br /> */}
-                            {/* <span className="font-medium"></span> Kuota bulanan ini berlaku untuk satu periode penagihan */}
+                            {/* Info kuota bulanan */}
                         </p>
                     </div>
                 </div>
 
-                {/* <div className="flex justify-end pt-4">
-          <button
-            type="submit"
-            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
-          >
-            Save Settings
-          </button>
-        </div> */}
+                {/* Tombol untuk submit form */}
                 <div className="flex justify-end">
                     <button type="submit" className="btn btn-primary">
                         Save Setting

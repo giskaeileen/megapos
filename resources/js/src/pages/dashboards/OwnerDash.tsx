@@ -18,13 +18,17 @@ import NoRecords from '../../components/Layouts/NoRecords';
 import { useLazyGetTopProductQuery } from '../../redux/features/orders/ordersApi';
 
 const OwnerDash = () => {
+    // Cek apakah dark mode aktif
     const isDark = useSelector((state: IRootState) => state.themeConfig.theme === 'dark' || state.themeConfig.isDarkMode);
+    // Cek apakah mode RTL aktif
     const isRtl = useSelector((state: IRootState) => state.themeConfig.rtlClass) === 'rtl' ? true : false;
+    // State loading
     const [loading] = useState(false);
 
+    // Mengambil data utama dashboard Owner
     const { data } = useGetOnwerDashQuery({});
 
-    //Revenue Chart
+    // Konfigurasi Revenue Chart
     const revenueChart: any = {
         series: [
             {
@@ -174,9 +178,9 @@ const OwnerDash = () => {
         },
     };
 
-    //Sales By Category
+    // Konfigurasi Sales By Category
     const salesByCategory: any = {
-        series: [985, 737, 270],
+        series: [985, 737, 270], // Data jumlah penjualan
         options: {
             chart: {
                 type: 'donut',
@@ -258,8 +262,10 @@ const OwnerDash = () => {
         },
     };
 
+    // Inisialisasi lazy query untuk mendapatkan data orders
     const [fetchOrdersTrigger] = useLazyGetOnwerOrdersDashQuery(); // Gunakan Lazy Query
 
+    // Mengambil seluruh order dengan pagination
     const fetchAllOrders = async () => {
         let allOrders: any[] = [];
         let currentPage = 1;
@@ -267,7 +273,6 @@ const OwnerDash = () => {
 
         try {
             while (currentPage <= lastPage) {
-                // const result = await fetchOrders({ ...params, page: currentPage }).unwrap();
                 const result = await fetchOrdersTrigger({}).unwrap();
 
                 allOrders = [...allOrders, ...result.data];
@@ -281,8 +286,10 @@ const OwnerDash = () => {
         return allOrders;
     };
 
+    // Simpan semua order dalam state
     const [allOrders, setAllOrders] = useState<any[]>([]);
 
+    // Panggil fetch order lalu simpan hasilnya
     const fetchOrdersData = async () => {
         const orders = await fetchAllOrders();
         setAllOrders(orders);
@@ -290,8 +297,10 @@ const OwnerDash = () => {
 
     // =====
 
+    // Inisialisasi lazy query untuk mendapatkan top produk
     const [fetchTopProductTrigger] = useLazyGetOnwerTopProductsDashQuery(); // Gunakan Lazy Query
 
+    // Mengambil seluruh top produk dengan pagination
     const fetchAllTopProducts = async () => {
         let allOrders: any[] = [];
         let currentPage = 1;
@@ -312,13 +321,16 @@ const OwnerDash = () => {
         return allOrders;
     };
 
+    // Simpan semua produk teratas dalam state
     const [allTopProducts, setAllTopProducts] = useState<any[]>([]);
 
+    // Panggil fetch produk teratas lalu simpan hasilnya
     const fetchTopProductsData = async () => {
         const orders = await fetchAllTopProducts();
         setAllTopProducts(orders);
     };
 
+    // Memanggil data orders dan top produk saat pertama kali komponen dirender
     useEffect(() => {
         fetchOrdersData();
         fetchTopProductsData();
@@ -326,70 +338,18 @@ const OwnerDash = () => {
 
     return (
         <div>
-            {/* <div className="grid sm:grid-cols-2 xl:grid-cols-4 gap-6 mb-6 text-white">
-                <div className="panel bg-gradient-to-r from-cyan-500 to-cyan-400 h-full p-0">
-                    <div className="flex items-center justify-between w-full p-5">
-                        <div className="relative">
-                            <div className="text-info dark:text-dark-light dark:bg-cyan-900 bg-primary-light w-11 h-11 rounded-lg flex items-center justify-center">
-                                <IconUsersGroup />
-                            </div>
-                        </div>
-                        <h5 className="font-semibold text-2xl ltr:text-right rtl:text-left dark:text-white-light">
-                            {data?.total_employees ?? 0}
-                            <span className="block text-sm font-normal">Total Employee</span>
-                        </h5>
-                    </div>
-                </div>
-                <div className="panel bg-gradient-to-r from-violet-500 to-violet-400 h-full p-0">
-                    <div className="flex items-center justify-between w-full p-5">
-                        <div className="relative">
-                            <div className="text-secondary dark:text-dark-light dark:bg-violet-900 bg-warning-light w-11 h-11 rounded-lg flex items-center justify-center">
-                                <IconShoppingBag />
-                            </div>
-                        </div>
-                        <h5 className="font-semibold text-2xl ltr:text-right rtl:text-left dark:text-white-light">
-                            {data?.total_orders ?? 0}
-                            <span className="block text-sm font-normal">Total Order</span>
-                        </h5>
-                    </div>
-                </div>
-                <div className="panel bg-gradient-to-r from-blue-500 to-blue-400 h-full p-0">
-                    <div className="flex items-center justify-between w-full p-5">
-                        <div className="relative">
-                            <div className="text-info dark:text-dark-light dark:bg-blue-900 bg-success-light w-11 h-11 rounded-lg flex items-center justify-center">
-                                <IconBarChart />
-                            </div>
-                        </div>
-                        <h5 className="font-semibold text-xl ltr:text-right rtl:text-left dark:text-white-light">
-                            Rp {Number(data?.total_payment || 0).toLocaleString()}
-                            <span className="block text-sm font-normal">Total Sales</span>
-                        </h5>
-                    </div>
-                </div>
-                <div className="panel bg-gradient-to-r from-fuchsia-500 to-fuchsia-400 h-full p-0">
-                    <div className="flex items-center justify-between w-full p-5">
-                        <div className="relative">
-                            <div className="text-danger dark:text-dark-light dark:bg-fuchsia-900 bg-secondary-light w-11 h-11 rounded-lg flex items-center justify-center">
-                                <IconBox />
-                            </div>
-                        </div>
-                        <h5 className="font-semibold text-2xl ltr:text-right rtl:text-left dark:text-white-light">
-                            {data?.total_stores ?? 0}
-                            <span className="block text-sm font-normal">Total Store</span>
-                        </h5>
-                    </div>
-                </div>
-            </div> */}
-
+            {/* Grid 4 kartu statistik */}
             <div className="grid sm:grid-cols-2 xl:grid-cols-4 gap-6 mb-6 text-white">
                 {/* Card Total Employee - Warna Primary (Hijau) */}
                 <div className="panel bg-gradient-to-r from-primary to-[#41bcae] h-full p-0">
                     <div className="flex items-center justify-between w-full p-5">
                         <div className="relative">
+                            {/* Icon employee */}
                             <div className="text-white dark:text-dark-light bg-[#41bcae] w-11 h-11 rounded-lg flex items-center justify-center">
                                 <IconUsersGroup />
                             </div>
                         </div>
+                        {/* Menampilkan jumlah total employee */}
                         <h5 className="font-semibold text-2xl ltr:text-right rtl:text-left dark:text-white-light">
                             {data?.total_employees ?? 0}
                             <span className="block text-sm font-normal">Total Employee</span>
@@ -401,10 +361,12 @@ const OwnerDash = () => {
                 <div className="panel bg-gradient-to-r from-secondary to-[#406674] h-full p-0">
                     <div className="flex items-center justify-between w-full p-5">
                         <div className="relative">
+                            {/* Icon order */}
                             <div className="text-white dark:text-dark-light bg-[#406674] w-11 h-11 rounded-lg flex items-center justify-center">
                                 <IconShoppingBag />
                             </div>
                         </div>
+                        {/* Menampilkan jumlah total order */}
                         <h5 className="font-semibold text-2xl ltr:text-right rtl:text-left dark:text-white-light">
                             {data?.total_orders ?? 0}
                             <span className="block text-sm font-normal">Total Order</span>
@@ -416,10 +378,12 @@ const OwnerDash = () => {
                 <div className="panel bg-gradient-to-r from-info to-[#6097b9] h-full p-0">
                     <div className="flex items-center justify-between w-full p-5">
                         <div className="relative">
+                            {/* Icon chart/sales */}
                             <div className="text-white dark:text-dark-light bg-[#6097b9] w-11 h-11 rounded-lg flex items-center justify-center">
                                 <IconBarChart />
                             </div>
                         </div>
+                        {/* Menampilkan total penjualan dalam format mata uang */}
                         <h5 className="font-semibold text-xl ltr:text-right rtl:text-left dark:text-white-light">
                             Rp {Number(data?.total_payment || 0).toLocaleString()}
                             <span className="block text-sm font-normal">Total Sales</span>
@@ -431,10 +395,12 @@ const OwnerDash = () => {
                 <div className="panel bg-gradient-to-r from-dark to-[#3f5f8b] h-full p-0">
                     <div className="flex items-center justify-between w-full p-5">
                         <div className="relative">
+                            {/* Ikon toko */}
                             <div className="text-white dark:text-dark-light bg-[#3f5f8b] w-11 h-11 rounded-lg flex items-center justify-center">
                                 <IconBox />
                             </div>
                         </div>
+                        {/* Menampilkan jumlah total store */}
                         <h5 className="font-semibold text-2xl ltr:text-right rtl:text-left dark:text-white-light">
                             {data?.total_stores ?? 0}
                             <span className="block text-sm font-normal">Total Store</span>
@@ -443,9 +409,12 @@ const OwnerDash = () => {
                 </div>
             </div>
 
+            {/* Komponen grafik laporan penjualan */}
             <ChartReport allOrders={allOrders} />
 
+            {/* Grid 2 kolom Recent Orders dan Top Selling Product */}
             <div className="grid lg:grid-cols-2 grid-cols-1 gap-6">
+                {/* Panel Recent Orders */}
                 <div className="panel h-full w-full">
                     <div className="flex items-center justify-between mb-5">
                         <h5 className="font-semibold text-lg dark:text-white-light">Recent Orders</h5>
@@ -462,8 +431,9 @@ const OwnerDash = () => {
                                 </tr>
                             </thead>
                             <tbody>
+                                {/* Cek apakah ada data order */}
                                 {allOrders?.length !== 0 ? (
-                                    // allOrders?.map((item: any) => (
+                                    // Ambil maksimal 10 data order terbaru
                                     allOrders.slice(0, 10).map((item: any) => (
                                         <tr className="text-white-dark hover:text-black dark:hover:text-white-light/90 group">
                                             <td className="min-w-[150px] text-black dark:text-white">{item.invoice_no}</td>
@@ -476,6 +446,7 @@ const OwnerDash = () => {
                                         </tr>
                                     ))
                                 ) : (
+                                    // Tampilkan komponen NoRecords jika tidak ada data
                                     <tr>
                                         <td colSpan={5}>
                                             <NoRecords />
@@ -487,10 +458,12 @@ const OwnerDash = () => {
                     </div>
                 </div>
 
+                {/* Panel Top Selling Product */}
                 <div className="panel h-full w-full">
                     <div className="flex items-center justify-between mb-5">
                         <h5 className="font-semibold text-lg dark:text-white-light">Top Selling Product</h5>
                     </div>
+                    {/* Tabel Top Selling Product */}
                     <div className="table-responsive">
                         <table>
                             <thead>
@@ -501,8 +474,9 @@ const OwnerDash = () => {
                                 </tr>
                             </thead>
                             <tbody>
+                                {/* Cek apakah ada data top product */}
                                 {allTopProducts?.length !== 0 ? (
-                                    // allTopProducts?.map((item: any) => (
+                                    // Ambil maksimal 10 produk terlaris
                                     allTopProducts.slice(0, 10).map((item: any) => (
                                         <tr className="text-white-dark hover:text-black dark:hover:text-white-light/90 group">
                                             <td className="min-w-[150px] text-black dark:text-white max-w-[200px] truncate">{item.product_name}</td>
@@ -511,6 +485,7 @@ const OwnerDash = () => {
                                         </tr>
                                     ))
                                 ) : (
+                                    // Tampilkan NoRecords jika tidak ada produk
                                     <tr>
                                         <td colSpan={5}>
                                             <NoRecords />

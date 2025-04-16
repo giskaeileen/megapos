@@ -24,7 +24,7 @@ const AttributesList = () => {
     const entityFilterColumn = `${entity}_filter_column`; 
     const entityFilterValue= `${entity}_filter_value`; 
 
-    // state 
+    // Inisialisasi state 
     const [page, setPage] = useState<number>(() => {
         const storedPage = localStorage.getItem(entityPage);
         return storedPage ? parseInt(storedPage, 10) : 1; // Konversi ke number, default ke 1
@@ -51,13 +51,13 @@ const AttributesList = () => {
     }); // nilai filter
     const isRtl = useSelector((state: IRootState) => state.themeConfig.rtlClass) === 'rtl' ? true : false;
 
-    // page
+    // Pagination 
     const [pageSize, setPageSize] = useState(10);
     const [initialRecords, setInitialRecords] = useState<any[]>([]);
     const [records, setRecords] = useState(initialRecords);
     const [selectedRecords, setSelectedRecords] = useState<any>([]);
 
-    // data
+    // Ambil data
     const { data, refetch } = useGetAttributesQuery(
         { 
             storeId: storeId,
@@ -70,6 +70,8 @@ const AttributesList = () => {
         },
         { refetchOnMountOrArgChange: true } 
     );
+
+    // kolom
     const cols = [
         { accessor: 'no', title: 'No' },
         { accessor: 'name', title: 'Name' },
@@ -81,6 +83,7 @@ const AttributesList = () => {
      * search 
      */
 
+    // Simpan search ke localStorage
     useEffect(() => {
         localStorage.setItem(`${entity}_search`, search);
     }, [search]);
@@ -89,6 +92,7 @@ const AttributesList = () => {
      * filter 
      */
 
+    // Simpan filter ke localStorage
     useEffect(() => {
         localStorage.setItem(entityFilterColumn, selectedColumn);
         localStorage.setItem(entityFilterValue, filterValue);
@@ -98,6 +102,7 @@ const AttributesList = () => {
      * sort 
      */
 
+    // Simpan sorting ke localStorage
     useEffect(() => {
         localStorage.setItem(`${entitySort}`, JSON.stringify(sortStatus));
     }, [sortStatus]);
@@ -113,6 +118,7 @@ const AttributesList = () => {
      * delete 
      */
 
+    // Hapus data
     const deleteRow = () => {
         deleteConfirmation(selectedRecords, deleteAttributes, refetch, storeId);
     };
@@ -149,6 +155,7 @@ const AttributesList = () => {
      * items 
      */
 
+    // Ubah data mentah menjadi format yang ditampilkan
     useEffect(() => {
         if (data?.data) {
             const mappedItems = data.data.map((d: any, index: number) => {
@@ -216,6 +223,7 @@ const AttributesList = () => {
 
     return (
         <div>
+            {/* Header */}
             <div className="flex items-center justify-between flex-wrap gap-4 mb-5">
                 <h2 className="text-xl">{capitalizeFirstLetter(entity)}</h2>
                 <div className="flex sm:flex-row flex-col sm:items-center sm:gap-3 gap-4 w-full sm:w-auto">
@@ -233,9 +241,11 @@ const AttributesList = () => {
                     </div>
                 </div>
             </div>
+            {/* Panel dan Tabel */}
             <div className="panel px-0 border-white-light dark:border-[#1b2e4b]">
                 <div className="invoice-table">
                     <div className="mb-4.5 px-5 flex md:items-center md:flex-row flex-col gap-5">
+                        {/* Dropdown untuk pilih kolom */}
                         <div className="flex md:items-center md:flex-row flex-col gap-5">
                             <div className="dropdown">
                                 <Dropdown
@@ -306,11 +316,13 @@ const AttributesList = () => {
                             />
                         </div>
 
+                        {/* Input pencarian */}
                         <div className="ltr:ml-auto rtl:mr-auto">
                             <input type="text" className="form-input w-auto" placeholder="Search..." value={search} onChange={(e) => setSearch(e.target.value)} />
                         </div>
                     </div>
 
+                    {/* Tabel attribut */}
                     <div className="datatables pagination-padding">
                         <DataTable
                             className="whitespace-nowrap table-hover invoice-table"

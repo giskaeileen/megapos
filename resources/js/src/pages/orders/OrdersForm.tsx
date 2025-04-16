@@ -18,8 +18,10 @@ const OrdersForm= () => {
     const pathnames = location.pathname.split('/').filter((x) => x);
     const storeId = pathnames[0];
     const navigate = useNavigate();
-    const { id } = useParams();  
+    const { id } = useParams(); 
+    // Query untuk mendapatkan data order berdasarkan ID 
     const { data } = useGetSingleOrderQuery({storeId, id}, { skip: !id });  // Menarik data jika ID ada
+    // Mutation untuk update dan store supplier
     const [updateSupplier, { isSuccess: isUpdateSuccess, error: errorUpdate }] = useUpdateSuppliersMutation();
     const [storeSupplier, {
         data: dataStore, 
@@ -28,41 +30,28 @@ const OrdersForm= () => {
     }] = useStoreSuppliersMutation()
     const [tableData, setTableData] = useState([])
 
+    // Set data detail order ke dalam state lokal setelah data diterima
     useEffect(() => {
         setTableData(data?.orderDetails)
     }, [data])
 
     console.log(tableData)
 
-    // const tableData = [
-    //     {
-    //         id: 1,
-    //         name: 'John Doe',
-    //         email: 'johndoe@yahoo.com',
-    //         date: '10/08/2020',
-    //         sale: 120,
-    //         status: 'Complete',
-    //         register: '5 min ago',
-    //         progress: '40%',
-    //         position: 'Developer',
-    //         office: 'London',
-    //     },
-    // ];
 
     /*****************************
      * tools 
      */
 
-    // const location = useLocation();
-    // const pathnames = location.pathname.split('/').filter((x) => x);
     const entity = pathnames[0];
 
     const dispatch = useDispatch();
 
+    // Set judul halaman
     useEffect(() => {
         dispatch(setPageTitle('File Upload Preview'));
     });
 
+    // Helper untuk kapitalisasi huruf pertama
     function capitalizeFirstLetter(str: string): string {
         return str.charAt(0).toUpperCase() + str.slice(1);
     }
@@ -71,6 +60,7 @@ const OrdersForm= () => {
      * validation 
      */
 
+    // Validasi menggunakan Yup
     const schema = Yup.object().shape({
         name: Yup.string()
             .required("Name is required")
@@ -84,8 +74,6 @@ const OrdersForm= () => {
         phone: Yup.string()
             .required("Phone is required")
             .max(15, "Phone number cannot exceed 15 characters"),
-        // account_holder: Yup.string()
-        //     .matches(/^[a-zA-Z\s]*$/, "Account Holder can only contain letters and spaces"),
         bank_name: Yup.string()
             .required("Bank Name is required")
             .notOneOf(["Choose..."], "Please select a valid bank name"),
@@ -103,10 +91,11 @@ const OrdersForm= () => {
             .required("Type is required")  
             .notOneOf(["Choose..."], "Please select a valid type name"),
         photo: Yup.mixed()
-            // .required("Image is required")
+            // Validasi jenis file
             .test("fileType", "Unsupported File Format", (value) =>
                 value ? ["image/jpg", "image/jpeg", "image/png"].includes(value.type) : true
             )
+            // Validasi ukuran file
             .test("fileSize", "File Size is too large. Maximum size is 1MB", (value) =>
                 value ? value.size <= 1024 * 1024 : true  // 1024 KB = 1 MB
             ),
@@ -118,7 +107,7 @@ const OrdersForm= () => {
 
     // Menangani formik
     const formik = useFormik({
-        enableReinitialize: true,
+        enableReinitialize: true, // Agar data bisa dimuat ulang ketika data berubah
         initialValues: {
             customer_name: data?.order?.customer?.name || '',
             customer_email: data?.order?.customer?.email|| '',
@@ -143,9 +132,10 @@ const OrdersForm= () => {
             address: data?.address || '',
             type: data?.type|| '',
         },
-        validationSchema: schema,
+        validationSchema: schema, // Skema validasi Yup
         onSubmit: async (values) => {
             const formData = new FormData();
+            // Menambahkan semua field ke formData
             formData.append("name", values.name);
             formData.append("shopname", values.shopname);
             formData.append("email", values.email);
@@ -158,10 +148,12 @@ const OrdersForm= () => {
             formData.append("address", values.address);
             formData.append("type", values.type);
 
+            // Jika ada foto, tambahkan ke formData
             if (values.photo) {
                 formData.append("photo", values.photo); 
             }
 
+            // Jika ada ID, berarti edit, jika tidak berarti create
             if (id) {
                 formData.append("_method", "PUT");
                 await updateSupplier({id, data: formData});
@@ -173,9 +165,9 @@ const OrdersForm= () => {
 
     const { values, errors, touched, handleChange, handleSubmit } = formik;
 
-    // image
+    // Uploadimage
     const [images, setImages] = useState<any>([]);
-    const maxNumber = 69;
+    const maxNumber = 69; // Jumlah maksimum gambar
 
     const onChange = (imageList: ImageListType, addUpdateIndex: number[] | undefined) => {
     setImages(imageList as never[]);
@@ -186,6 +178,7 @@ const OrdersForm= () => {
         }
     };
 
+    // Jika data user memiliki foto, set gambar defaultnya
     useEffect(() => {
         if (data && data?.order?.customer?.photo) {
             const initialImage = {
@@ -200,6 +193,7 @@ const OrdersForm= () => {
      * status 
      */
 
+    // Menampilkan toast/alert berdasarkan status sukses/gagal
     useEffect(() => {
         if (isSuccessStore) {
             toast.success("Create Successfully")
@@ -220,11 +214,13 @@ const OrdersForm= () => {
 
     return (
         <form onSubmit={handleSubmit} >
+            {/* Header form judul dan button Save */}
             <div className="flex items-center justify-between flex-wrap gap-4 mb-5">
                 <h2 className="text-xl">{capitalizeFirstLetter(entity)}</h2>
                 <div className="flex sm:flex-row flex-col sm:items-center sm:gap-3 gap-4 w-full sm:w-auto">
                     <div className="relative">
                         <div className="flex items-center gap-2">
+                            {/* button submit form */}
                             <button type="submit" className="btn btn-primary">
                                 Save 
                             </button>
@@ -232,25 +228,18 @@ const OrdersForm= () => {
                     </div>
                 </div>
             </div>
+            {/* Grid form */}
             <div className="grid lg:grid-cols-6 grid-cols-1 gap-6">
+                {/* Bagian upload foto */}
                 <div className="col-span-1 lg:col-span-2">
                     <div className="panel" id="single_file">
                         <div className="mb-5">
                             <div className="custom-file-container" data-upload-id="myFirstImage">
+                                {/* Label Upload */}
                                 <div className="label-container">
                                     <label>Upload </label>
-                                    {/* <button
-                                        type="button"
-                                        className="custom-file-container__image-clear"
-                                        title="Clear Image"
-                                        onClick={() => {
-                                            setImages([]);
-                                        }}
-                                    >
-                                        ×
-                                    </button> */}
                                 </div>
-                                {/* <label className="custom-file-container__custom-file"></label> */}
+                                {/* Input file tersembunyi */}
                                 <input
                                     hidden
                                     id="photo"
@@ -259,6 +248,7 @@ const OrdersForm= () => {
                                     accept="image/*"
                                     onChange={(event: any) => {
                                         const file = event.currentTarget.files[0];
+                                        // Set file ke Formik state
                                         formik.setFieldValue("photo", file);
 
                                         // Set gambar baru ke pratinjau
@@ -270,44 +260,39 @@ const OrdersForm= () => {
                                     }}
                                     className="custom-file-container__custom-file__custom-file-input"
                                 />
+                                {/* Validasi error file jika ada */}
                                 {formik.errors.photo && formik.touched.photo && (
                                     <div className="text-red-500 text-sm mt-1">{formik.errors.photo}</div>
                                 )}
+                                {/* Maksimum ukuran file */}
                                 <input type="hidden" name="MAX_FILE_SIZE" value="10485760" />
+                                {/* Komponen untuk menangani upload dan preview gambar */}
                                 <ImageUploading value={images} onChange={onChange} maxNumber={maxNumber}>
                                     {({ imageList, onImageUpload, onImageRemoveAll, onImageUpdate, onImageRemove, isDragging, dragProps }) => (
-                                        <div className="upload__image-wrapper">
-                                            {/* <button
-                                                type="button"
-                                                className="custom-file-container__custom-file__custom-file-control"
-                                                onClick={onImageUpload}
-                                                {...dragProps}
-                                                style={isDragging ? { backgroundColor: "#afafaf" } : undefined}
-                                            >
-                                                Choose File...
-                                            </button> */}
+                                            {/* Preview gambar yang dipilih */}
                                             {imageList.map((image, index) => (
                                                 <div key={index} className="custom-file-container__image-preview relative">
                                                     <img src={image.dataURL} alt="img" className="m-auto" />
-                                                    {/* <button onClick={() => onImageRemove(index)}>Remove</button> */}
                                                 </div>
                                             ))}
                                         </div>
                                     )}
                                 </ImageUploading>
+                                {/* Jika tidak ada gambar, tampilkan gambar default */}
                                 {images.length === 0 ? <img src="/assets/images/file-preview.svg" className="max-w-md w-full m-auto" alt="" /> : ''}
                             </div>
                         </div>
                     </div>
                 </div>
 
-                {/* <div className="pt-5 grid lg:grid-cols-2 grid-cols-1 gap-6"> */}
+                {/* Form utama */}
                 <div className="grid lg:grid-cols-1 grid-cols-1 gap-6 col-span-1 lg:col-span-4">
                     {/* Grid */}
                     <div className="panel" id="forms_grid">
                         <div className="mb-5">
                             <div className="space-y-5">
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    {/* Input field readonly */}
                                     <div>
                                         <label htmlFor="customer_name">Customer Name</label>
                                         <input
@@ -408,11 +393,11 @@ const OrdersForm= () => {
                                         />
                                     </div>
 
+                                    {/* Tabel produk yang dipesan */}
                                     <div className="table-responsive mb-5 lg:col-span-2">
                                         <table>
                                             <thead>
                                                 <tr>
-                                                    {/* <th>Photo</th> */}
                                                     <th>Product Name</th>
                                                     <th>Product Code</th>
                                                     <th>Quantity</th>
@@ -426,6 +411,7 @@ const OrdersForm= () => {
                                                             <td>
                                                                 <div className="flex items-center w-max">
                                                                     <div className="w-max">
+                                                                        {/* Gambar produk atau default jika kosong */}
                                                                         <img src={ item.product.product_image
                                                                             ? `${import.meta.env.VITE_SERVER_URI_BASE}storage/products/${item.product.product_image}` 
                                                                             : '/assets/images/blank_profile.png'} 

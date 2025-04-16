@@ -9,26 +9,36 @@ import IconCaretDown from '../../components/Icon/IconCaretDown';
 import { useDeleteStoresMutation, useGetStoresQuery } from '../../redux/features/stores/storesApi';
 import IconSearch from '../../components/Icon/IconSearch';
 
+// Komponen utama untuk menampilkan daftar toko milik user
 const MyStoresList = () => {
     const location = useLocation();
+    // Mengambil path URL dan memisahkannya berdasarkan '/'
     const pathnames = location.pathname.split('/').filter((x) => x);
-    const entity = pathnames[0];
+    const entity = pathnames[0]; // Mendapatkan entitas dari URL
+    // Menentukan key untuk localStorage berdasarkan entitas
     const entityCols = `${pathnames[0]}_cols`; 
     const entityPage = `${pathnames[0]}_page`; 
     const entitySort = `${pathnames[0]}_sort`; 
+
+    // State untuk halaman
     const [page, setPage] = useState<number>(() => {
         const storedPage = localStorage.getItem(entityPage);
-        return storedPage ? parseInt(storedPage, 10) : 1; // Konversi ke number, default ke 1
+        return storedPage ? parseInt(storedPage, 10) : 1;
     });
+
+    // State untuk pencarian
     const [search, setSearch] = useState(() => {
         return localStorage.getItem(`${entity}_search`) || '';
     });
+
+    // State untuk sorting
     const [sortStatus, setSortStatus] = useState<DataTableSortStatus>(() => {
         const storedSort = localStorage.getItem(`${entitySort}`);
         return storedSort
             ? JSON.parse(storedSort) 
             : { columnAccessor: 'created_at', direction: 'desc' }; 
     });
+    // Ambil data dari API menggunakan RTK Query
     const { data, refetch } = useGetStoresQuery(
         { 
             page, 
@@ -39,9 +49,14 @@ const MyStoresList = () => {
         { refetchOnMountOrArgChange: true } 
     );
     const dispatch = useDispatch();
+    // State untuk menyimpan daftar item dan total data
     const [items, setItems] = useState<any[]>([]);
     const [total, setTotal] = useState();
+
+    // Fungsi delete dari RTK Query
     const [deleteStores] = useDeleteStoresMutation();
+
+    // State untuk kolom yang disembunyikan
     const [hideCols, setHideCols] = useState<string[]>([]);
 
     /*****************************
@@ -68,7 +83,7 @@ const MyStoresList = () => {
     }, []);
 
     /*****************************
-     * page 
+     * Mengelola paginasi dan penyimpanan halaman ke localStorage 
      */
 
     const [pageSize, setPageSize] = useState(10);
@@ -100,8 +115,8 @@ const MyStoresList = () => {
     }, [page, pageSize, initialRecords]);
 
     /*****************************
-     * items 
-     */
+    * Mapping data API ke format item yang ditampilkan
+    */
 
     useEffect(() => {
         if (data?.data) {
@@ -110,9 +125,6 @@ const MyStoresList = () => {
                 no: (index + 1) + ((page - 1) * pageSize),
                 name: d.name,
                 address: d.address,
-                // phone: d.phone,
-                // shopname: d.shopname,
-                // type: d.type,
                 photo: d.photo 
                     ? `${import.meta.env.VITE_SERVER_URI_BASE}storage/${entity}/${d.photo}` 
                     : '/assets/images/blank_product.png', 
@@ -173,11 +185,13 @@ const MyStoresList = () => {
      * tools 
      */
 
+    // Kapitalisasi huruf pertama
     function capitalizeFirstLetter(str: string): string {
         return str.charAt(0).toUpperCase() + str.slice(1);
     }
 
     // ====
+    // Filter data berdasarkan API
     const [filteredItems, setFilteredItems] = useState<any>(data);
     useEffect(() => {
         setFilteredItems(() => {
@@ -187,6 +201,7 @@ const MyStoresList = () => {
         });
     }, [data]);
 
+    // Fungsi pindah halaman
     const handlePageChange = (newPage: number) => {
         if (total && newPage >= 1 && newPage <= Math.ceil(total / pageSize)) {
             setPage(newPage);
@@ -195,21 +210,11 @@ const MyStoresList = () => {
 
     return (
         <div>
+            {/* Header dan input search */}
             <div className="flex items-center justify-between flex-wrap gap-4">
                 <h2 className="text-xl">My Store</h2>
                 <div className="flex sm:flex-row flex-col sm:items-center sm:gap-3 gap-4 w-full sm:w-auto">
-                    <div className="flex gap-3">
-                        {/* <div>
-                            <button type="button" className={`btn btn-outline-primary p-2 ${value === 'list' && 'bg-primary text-white'}`} onClick={() => setValue('list')}>
-                                <IconListCheck />
-                            </button>
-                        </div>
-                        <div>
-                            <button type="button" className={`btn btn-outline-primary p-2 ${value === 'grid' && 'bg-primary text-white'}`} onClick={() => setValue('grid')}>
-                                <IconLayoutGrid />
-                            </button>
-                        </div> */}
-                    </div>
+                    <div className="flex gap-3"></div>
                     <div className="relative">
                         <input type="text" placeholder="Search..." className="form-input py-2 ltr:pr-11 rtl:pl-11 peer" value={search} onChange={(e) => setSearch(e.target.value)} />
                         <button type="button" className="absolute ltr:right-[11px] rtl:left-[11px] top-1/2 -translate-y-1/2 peer-focus:text-primary">
@@ -219,59 +224,27 @@ const MyStoresList = () => {
                 </div>
             </div>
 
+            {/* Daftar toko dalam bentuk grid */}
             <div className="grid md:grid-cols-4 sm:grid-cols-2 grid-cols-1 gap-6 mt-5 w-full">
                 {Array.isArray(filteredItems) && filteredItems?.map((d: any, index: number) => {
                     return (
                         <a href={`/${d.slug}`} key={index}>
                             <div className="bg-white dark:bg-[#1c232f] rounded-md overflow-hidden text-center shadow relative" key={d.id}>
                                 <div className="bg-white dark:bg-[#1c232f] rounded-md overflow-hidden text-center shadow relative">
-                                        <div
-                                            className="bg-white/40 rounded-t-md bg-center bg-cover p-6 pb-0 bg-"
-                                            style={{
-                                                backgroundImage: `url('/assets/images/notification-bg.png')`,
-                                                backgroundRepeat: 'no-repeat',
-                                                width: '100%',
-                                                height: '100%',
-                                            }}
-                                        >
-                                        </div>
+                                    <div className="bg-white/40 rounded-t-md bg-center bg-cover p-6 pb-0 bg-" style={{ backgroundImage: `url('/assets/images/notification-bg.png')`, backgroundRepeat: 'no-repeat', width: '100%', height: '100%' }}>
+                                    </div>
                                     <div className="p-5">
                                         <div className="flex items-center flex-col sm:flex-row">
                                             <div className="mb-5 w-20 h-20 rounded-full overflow-hidden">
-                                                <img src={d.photo
-                                                    ? `${import.meta.env.VITE_SERVER_URI_BASE}storage/stores/${d.photo}` 
-                                                    : '/assets/images/blank_product.png'
-                                                } alt="profile" className="w-full h-full object-cover" />
+                                                <img src={d.photo ? `${import.meta.env.VITE_SERVER_URI_BASE}storage/stores/${d.photo}` : '/assets/images/blank_product.png'} alt="profile" className="w-full h-full object-cover" />
                                             </div>
                                             <div className="flex-1 ltr:sm:pl-5 rtl:sm:pr-5 text-center sm:text-left">
                                                 <h5 className="text-[#3b3f5c] text-[15px] font-semibold mb-2 dark:text-white-light">{d.name}</h5>
-                                                {/* <p className="mb-2 text-white-dark">{d.zip}, {d.address}, {d.city}, {d.state}, {d.country}</p> */}
                                                 <p className="mb-2 text-white-dark">
-                                                    {[d.zip, d.address, d.city, d.state, d.country]
-                                                        .filter(Boolean) // Hapus nilai yang kosong/null/undefined
-                                                        .join(", ")}
+                                                    {[d.zip, d.address, d.city, d.state, d.country].filter(Boolean).join(", ")}
                                                 </p>
-                                                {/* <p className="mb-2 text-white-dark">09435032985</p> */}
                                             </div>
                                         </div>
-                                        {/* <div className="flex items-center justify-between flex-wrap gap-3">
-                                            <div className="flex-auto">
-                                                <div className="text-info">324</div>
-                                                <div>Comissions</div>
-                                            </div>
-                                            <div className="flex-auto">
-                                                <div className="text-info">43</div>
-                                                <div>Sales</div>
-                                            </div>
-                                            <div className="flex-auto">
-                                                <div className="text-info">43</div>
-                                                <div>Balances</div>
-                                            </div>
-                                            <div className="flex-auto">
-                                                <div className="text-info">43</div>
-                                                <div>Widraws</div>
-                                            </div>
-                                        </div> */}
                                     </div>
                                 </div>
                             </div>
@@ -280,43 +253,23 @@ const MyStoresList = () => {
                 })}
             </div>
 
-            {/* Pagination */}
+            {/* Navigasi halaman */}
             <div className="flex m-4 justify-center">
                 <ul className="inline-flex items-center space-x-1 rtl:space-x-reverse">
                     <li>
-                        <button
-                            type="button"
-                            onClick={() => handlePageChange(page - 1)}
-                            className="flex justify-center font-semibold p-2 rounded-full transition bg-white-light text-dark hover:text-white hover:bg-primary dark:text-white-light dark:bg-[#191e3a] dark:hover:bg-primary"
-                            disabled={page === 1}
-                        >
+                        <button type="button" onClick={() => handlePageChange(page - 1)} className="flex justify-center font-semibold p-2 rounded-full transition bg-white-light text-dark hover:text-white hover:bg-primary dark:text-white-light dark:bg-[#191e3a] dark:hover:bg-primary" disabled={page === 1}>
                             <IconCaretDown className="w-5 h-5 rotate-90 rtl:-rotate-90" />
                         </button>
                     </li>
-                    {/* {Array.from({ length: Math.ceil(total / pageSize) }, (_, idx) => ( */}
                     {Array.from({ length: Math.ceil((total ?? 0) / pageSize) }, (_, idx) => (
                         <li key={idx}>
-                            <button
-                                type="button"
-                                onClick={() => handlePageChange(idx + 1)}
-                                className={`flex justify-center font-semibold px-3.5 py-2 rounded-full transition ${
-                                    page === idx + 1
-                                        ? "bg-primary text-white"
-                                        : "bg-white-light text-dark hover:text-white hover:bg-primary dark:text-white-light dark:bg-[#191e3a] dark:hover:bg-primary"
-                                }`}
-                            >
+                            <button type="button" onClick={() => handlePageChange(idx + 1)} className={`flex justify-center font-semibold px-3.5 py-2 rounded-full transition ${page === idx + 1 ? "bg-primary text-white" : "bg-white-light text-dark hover:text-white hover:bg-primary dark:text-white-light dark:bg-[#191e3a] dark:hover:bg-primary"}`}>
                                 {idx + 1}
                             </button>
                         </li>
                     ))}
                     <li>
-                        <button
-                            type="button"
-                            onClick={() => handlePageChange(page + 1)}
-                            className="flex justify-center font-semibold p-2 rounded-full transition bg-white-light text-dark hover:text-white hover:bg-primary dark:text-white-light dark:bg-[#191e3a] dark:hover:bg-primary"
-                            // disabled={page === Math.ceil(total / pageSize)}
-                            disabled={page === Math.ceil((total ?? 0) / pageSize)}
-                        >
+                        <button type="button" onClick={() => handlePageChange(page + 1)} className="flex justify-center font-semibold p-2 rounded-full transition bg-white-light text-dark hover:text-white hover:bg-primary dark:text-white-light dark:bg-[#191e3a] dark:hover:bg-primary" disabled={page === Math.ceil((total ?? 0) / pageSize)}>
                             <IconCaretDown className="w-5 h-5 -rotate-90 rtl:rotate-90" />
                         </button>
                     </li>

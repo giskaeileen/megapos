@@ -11,32 +11,42 @@ import { useGetSingleUsersQuery, useStoreUserMutation, useUpdateUserMutation } f
 // import { useGetRoleQuery } from '../../redux/features/roles/roleApi';
 import { useGetRolesQuery } from '../../redux/features/roles/rolesApi';
 
-const UsersForm= () => {
+const UsersForm = () => {
+    // Mengambil fungsi navigate untuk navigasi programatik
     const navigate = useNavigate();
-    const { id } = useParams();  
-    const { data } = useGetSingleUsersQuery(id, { skip: !id });  // Menarik data jika ID ada
+    // Mengambil id dari URL parameter
+    const { id } = useParams();
+    // Mengambil data pengguna berdasarkan ID jika ID ada
+    const { data } = useGetSingleUsersQuery(id, { skip: !id });  
+    // Mengambil fungsi untuk update data pengguna
     const [updateUser, { isSuccess: isUpdateSuccess, error: errorUpdate }] = useUpdateUserMutation();
+    // Mengambil fungsi untuk menyimpan data pengguna baru
     const [storeUser, {
         data: dataStore, 
         error: errorStore, 
         isSuccess: isSuccessStore 
     }] = useStoreUserMutation()
-    const { data: role, isLoading: isLoadingRole } = useGetRolesQuery({}); 
+    // Mengambil data role yang ada pada aplikasi
+    const { data: role, isLoading: isLoadingRole } = useGetRolesQuery({});
 
     /*****************************
      * tools 
      */
 
+    // Mendapatkan path URL dan memisahkannya untuk digunakan
     const location = useLocation();
     const pathnames = location.pathname.split('/').filter((x) => x);
     const entity = pathnames[0];
 
+    // Mendapatkan dispatch untuk mengatur state aplikasi
     const dispatch = useDispatch();
 
+    // Mengubah judul halaman menjadi 'File Upload Preview'
     useEffect(() => {
         dispatch(setPageTitle('File Upload Preview'));
     });
 
+    // Fungsi untuk mengubah huruf pertama menjadi kapital
     function capitalizeFirstLetter(str: string): string {
         return str.charAt(0).toUpperCase() + str.slice(1);
     }
@@ -45,40 +55,46 @@ const UsersForm= () => {
      * validation 
      */
 
+    // Skema validasi menggunakan Yup
     const schema = Yup.object().shape({
+        // Validasi untuk nama pengguna
         name: Yup.string()
             .required("Name is required")
             .matches(/^[a-zA-Z\s]*$/, "Name can only contain letters and spaces"),
+        // Validasi untuk role pengguna
         role: Yup.string()
             .required("Role is required")
             .notOneOf(["Choose..."], "Please select a valid role"),
+        // Validasi untuk username
         username: Yup.string()
             .required("Username is required")
             .matches(/^[a-zA-Z0-9_]*$/, "Username can only contain letters, numbers, and underscores")
             .min(3, "Username must be at least 3 characters")
             .max(20, "Username cannot exceed 20 characters"),
+        // Validasi untuk email
         email: Yup.string()
             .email("Invalid email address")
             .required("Email is required"),
+        // Validasi untuk password (hanya jika id ada, untuk update)
         password: Yup.string()
             .when("id", {
-            is: (id: number) => !!id, // Jika id ada (untuk update)
+            is: (id: number) => !!id,
             then: Yup.string()
                 .required("Password is required")
                 .min(6, "Password must be at least 6 characters"), 
-            otherwise: Yup.string().notRequired(), // Jika tidak ada id (untuk create), password tidak wajib
+            otherwise: Yup.string().notRequired(),
             }),
-        // Validasi password_confirmation hanya jika id ada
+        // Validasi untuk konfirmasi password (hanya jika id ada, untuk update)
         password_confirmation: Yup.string()
             .when("id", {
-            is: (id: number) => !!id, // Jika id ada (untuk update)
+            is: (id: number) => !!id,
             then: Yup.string()
                 .required("Please confirm your password")
                 .oneOf([Yup.ref('password'), null], "Passwords must match"), 
-            otherwise: Yup.string().notRequired(), // Jika tidak ada id (untuk create), konfirmasi password tidak wajib
+            otherwise: Yup.string().notRequired(),
             }),
+        // Validasi untuk foto (format file harus image)
         photo: Yup.mixed()
-            // .required("Image is required")
             .test("fileType", "Unsupported File Format", (value) =>
             value ? ["image/jpg", "image/jpeg", "image/png"].includes(value.type) : true
             ),
@@ -88,6 +104,7 @@ const UsersForm= () => {
      * form data 
      */
 
+    // Menginisialisasi form dengan Formik
     const formik = useFormik({
         enableReinitialize: true,
         initialValues: {
@@ -101,6 +118,7 @@ const UsersForm= () => {
         },
         validationSchema: schema,
         onSubmit: async (values) => {
+            // Membuat FormData untuk mengirim data
             const formData = new FormData();
             formData.append("name", values.name);
             formData.append("role", values.role);
@@ -113,23 +131,29 @@ const UsersForm= () => {
                 formData.append("photo", values.photo); 
             }
 
+            // Jika id ada, lakukan update
             if (id) {
                 formData.append("_method", "PUT");
                 await updateUser({id, data: formData});
             } else {
+                // Jika tidak ada id, lakukan penyimpanan baru
                 await storeUser(formData);
             }
         }
     });
 
+    // Mengambil nilai formik dan error yang ada
     const { values, errors, touched, handleChange, handleSubmit } = formik;
 
-    // image
+    // Menangani gambar untuk upload
     const [images, setImages] = useState<any>([]);
+
+    // Maksimal gambar yang bisa di-upload
     const maxNumber = 69;
 
+    // Fungsi untuk menangani perubahan gambar
     const onChange = (imageList: ImageListType, addUpdateIndex: number[] | undefined) => {
-    setImages(imageList as never[]);
+        setImages(imageList as never[]);
         if (imageList.length > 0) {
             formik.setFieldValue("photo", imageList[0].file);
         } else {
@@ -151,6 +175,7 @@ const UsersForm= () => {
      * status 
      */
 
+    // Menangani status keberhasilan atau error dari proses penyimpanan atau pembaruan
     useEffect(() => {
         if (isSuccessStore) {
             toast.success("Create Successfully")
@@ -170,6 +195,7 @@ const UsersForm= () => {
     }, [isSuccessStore, isUpdateSuccess, errorStore, errorUpdate])
 
     return (
+        // Form untuk mengelola data pengguna
         <form onSubmit={handleSubmit} >
             <div className="flex items-center justify-between flex-wrap gap-4 mb-5">
                 <h2 className="text-xl">{capitalizeFirstLetter(entity)}</h2>
@@ -240,7 +266,6 @@ const UsersForm= () => {
                                             {imageList.map((image, index) => (
                                                 <div key={index} className="custom-file-container__image-preview relative">
                                                     <img src={image.dataURL} alt="img" className="m-auto" />
-                                                    {/* <button onClick={() => onImageRemove(index)}>Remove</button> */}
                                                 </div>
                                             ))}
                                         </div>
@@ -252,13 +277,13 @@ const UsersForm= () => {
                     </div>
                 </div>
 
-                {/* <div className="pt-5 grid lg:grid-cols-2 grid-cols-1 gap-6"> */}
+                {/* Form fields */}
                 <div className="grid lg:grid-cols-1 grid-cols-1 gap-6 col-span-1 lg:col-span-4">
-                    {/* Grid */}
                     <div className="panel" id="forms_grid">
                         <div className="mb-5">
                             <div className="space-y-5">
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    {/* Field Name */}
                                     <div>
                                         <label htmlFor="name">Name</label>
                                         <input
@@ -274,18 +299,19 @@ const UsersForm= () => {
                                         )}
                                     </div>
 
+                                    {/* Field Role */}
                                     <div>
                                         <label htmlFor="role">Role</label>
                                         <select
                                             id="role"
                                             className="form-select text-white-dark"
-                                            value={values.role}  // Set nilai yang sesuai dengan formik values
-                                            onChange={handleChange}  // Tangani perubahan nilai
+                                            value={values.role}  
+                                            onChange={handleChange}
                                         >
                                             <option value="">Choose...</option>
                                             {role?.data?.map((roleItem: any) => (
                                                 <option key={roleItem.name} value={roleItem.name}>
-                                                    {roleItem.name}  {/* Menampilkan nama role */}
+                                                    {roleItem.name}
                                                 </option>
                                             ))}
                                         </select>
@@ -294,6 +320,7 @@ const UsersForm= () => {
                                         )}
                                     </div>
 
+                                    {/* Field Username */}
                                     <div>
                                         <label htmlFor="username">Username</label>
                                         <input
@@ -309,6 +336,7 @@ const UsersForm= () => {
                                         )}
                                     </div>
 
+                                    {/* Field Email */}
                                     <div>
                                         <label htmlFor="email">Email</label>
                                         <input
@@ -324,6 +352,7 @@ const UsersForm= () => {
                                         )}
                                     </div>
 
+                                    {/* Field Password */}
                                     <div>
                                         <label htmlFor="password">Password</label>
                                         <input
@@ -334,17 +363,18 @@ const UsersForm= () => {
                                             value={values.password}
                                             onChange={handleChange}
                                         />
-                                        {errors.password && touched.password && (
+                                        {errors.password && touched.password && typeof errors.password === 'string' && (
                                             <span className="text-red-500">{errors.password}</span>
                                         )}
                                     </div>
 
+                                    {/* Field Confirm Password */}
                                     <div>
-                                        <label htmlFor="password_confirmation">Password Confirm</label>
+                                        <label htmlFor="password_confirmation">Confirm Password</label>
                                         <input
                                             id="password_confirmation"
                                             type="password"
-                                            placeholder="Enter Password Confirm"
+                                            placeholder="Confirm Password"
                                             className="form-input"
                                             value={values.password_confirmation}
                                             onChange={handleChange}

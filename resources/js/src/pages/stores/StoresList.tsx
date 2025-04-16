@@ -13,50 +13,85 @@ import { useDeleteStoresMutation, useGetStoresQuery } from '../../redux/features
 import { capitalizeFirstLetter, deleteConfirmation } from '../../components/tools';
 
 const StoresList = () => {
-    // entity localstorage
+    // Ambil lokasi saat ini dari react-router
     const location = useLocation();
+    // Pecah pathname menjadi array berdasarkan '/'
     const pathnames = location.pathname.split('/').filter((x) => x);
+    // Ambil entity dari URL, misalnya: /stores -> entity = 'stores'
     const entity = pathnames[0];
+    // Nama-nama key untuk localStorage terkait entitas ini
     const entityCols = `${pathnames[0]}_cols`; 
     const entityPage = `${pathnames[0]}_page`; 
     const entitySort = `${pathnames[0]}_sort`; 
     const entityFilterColumn = `${pathnames[0]}_filter_column`; 
     const entityFilterValue= `${pathnames[0]}_filter_value`; 
 
-    // state 
+    // ==============================
+    // STATE
+    // ==============================
+
+    // State untuk halaman saat ini, nilai awal dari localStorage atau default 1
     const [page, setPage] = useState<number>(() => {
         const storedPage = localStorage.getItem(entityPage);
-        return storedPage ? parseInt(storedPage, 10) : 1; // Konversi ke number, default ke 1
+        return storedPage ? parseInt(storedPage, 10) : 1;
     });
+
+    // State untuk input pencarian (search)
     const [search, setSearch] = useState(() => {
         return localStorage.getItem(`${entity}_search`) || '';
     });
+
+    // State untuk status sorting, disimpan dalam localStorage dalam bentuk objek JSON
     const [sortStatus, setSortStatus] = useState<DataTableSortStatus>(() => {
         const storedSort = localStorage.getItem(`${entitySort}`);
         return storedSort
             ? JSON.parse(storedSort) 
-            : { columnAccessor: 'created_at', direction: 'desc' }; 
+            : { columnAccessor: 'created_at', direction: 'desc' };
     });
+
+    // State untuk nama kolom yang difilter
     const [selectedColumn, setSelectedColumn] = useState<string>(() => {
         return localStorage.getItem(`${entity}_filter_column`) || '';
-    }); // Kolom yang difilter
+    });
+
+    // State untuk nilai dari filter
     const [filterValue, setFilterValue] = useState<string>(() => {
         return localStorage.getItem(`${entity}_filter_value`) || '';
-    }); // nilai filter
+    });
+
+    // Inisialisasi dispatch Redux
     const dispatch = useDispatch();
+
+    // Data utama dan total record
     const [items, setItems] = useState<any[]>([]);
     const [total, setTotal] = useState();
+
+    // Fungsi untuk delete data, menggunakan RTK Query mutation
     const [deleteStores] = useDeleteStoresMutation();
+
+    // State untuk menyimpan kolom yang disembunyikan
     const [hideCols, setHideCols] = useState<string[]>([]);
+
+    // Cek apakah RTL (right-to-left) aktif dari Redux
     const isRtl = useSelector((state: IRootState) => state.themeConfig.rtlClass) === 'rtl' ? true : false;
 
-    // page
+    // ==============================
+    // PAGINATION DAN SELEKSI
+    // ==============================
+
+    // Ukuran halaman untuk pagination
     const [pageSize, setPageSize] = useState(10);
+    // Menyimpan semua data awal dari API
     const [initialRecords, setInitialRecords] = useState<any[]>([]);
+    // Data yang ditampilkan di tabel saat ini
     const [records, setRecords] = useState(initialRecords);
+    // Data yang dipilih oleh user
     const [selectedRecords, setSelectedRecords] = useState<any>([]);
 
-    // data 
+    // ==============================
+    // AMBIL DATA DARI API
+    // ==============================
+
     const { data, refetch } = useGetStoresQuery(
         { 
             page, 
@@ -66,8 +101,13 @@ const StoresList = () => {
             filterColumn: selectedColumn,  
             filterValue: filterValue    
         },
-        { refetchOnMountOrArgChange: true } 
+        { refetchOnMountOrArgChange: true } // data akan di-refresh jika argumen berubah
     );
+
+    // ==============================
+    // KOLOM UNTUK DATATABLE
+    // ==============================
+
     const cols = [
         { accessor: 'no', title: 'No' },
         { accessor: 'photo', title: 'Photo' },
@@ -81,31 +121,27 @@ const StoresList = () => {
         { accessor: 'created_at', title: 'Created At' },
     ];
 
-    /*****************************
-     * search 
-     */
+    // ==============================
+    // EFEK UNTUK SIMPAN KE LOCAL STORAGE
+    // ==============================
 
+    // Simpan input search ke localStorage saat berubah
     useEffect(() => {
         localStorage.setItem(`${entity}_search`, search);
     }, [search]);
 
-    /*****************************
-     * filter 
-     */
-
+    // Simpan kolom & nilai filter ke localStorage saat berubah
     useEffect(() => {
         localStorage.setItem(entityFilterColumn, selectedColumn);
         localStorage.setItem(entityFilterValue, filterValue);
     }, [selectedColumn, filterValue]);
 
-    /*****************************
-     * sort 
-     */
-
+    // Simpan status sorting ke localStorage saat berubah
     useEffect(() => {
         localStorage.setItem(`${entitySort}`, JSON.stringify(sortStatus));
     }, [sortStatus]);
 
+    // Saat component mount, ambil sorting dari localStorage (jika ada)
     useEffect(() => {
         const storedSort = localStorage.getItem(`${entitySort}`);
         if (storedSort) {
@@ -113,23 +149,25 @@ const StoresList = () => {
         }
     }, []);
 
-    /*****************************
-     * delete 
-     */
+    // ==============================
+    // DELETE FUNCTION
+    // ==============================
 
+    // Fungsi hapus data dengan konfirmasi
     const deleteRow = () => {
         deleteConfirmation(selectedRecords, deleteStores, refetch);
     };
 
-    /*****************************
-     * page 
-     */
+    // ==============================
+    // PAGINATION DAN RECORDS
+    // ==============================
 
+    // Simpan semua data awal ke dalam state saat 'items' berubah
     useEffect(() => {
         setInitialRecords(items)
     }, [items]);
 
-    // Muat data awal dari localStorage saat komponen pertama kali dirender
+    // Saat pertama kali render, ambil halaman terakhir dari localStorage
     useEffect(() => {
         const storedPage = localStorage.getItem(entityPage);
         if (storedPage) {
@@ -137,32 +175,34 @@ const StoresList = () => {
         }
     }, []);
 
-    // Simpan nilai `page` ke localStorage saat berubah
+    // Simpan nomor halaman ke localStorage saat page berubah
     useEffect(() => {
         localStorage.setItem(entityPage, String(page));
     }, [page]);
 
-    // Perbarui data `records` setiap kali `page` atau `pageSize` berubah
+    // Update tampilan record sesuai page dan pageSize
     useEffect(() => {
         const from = (page - 1) * pageSize;
         const to = from + pageSize;
         setRecords(initialRecords);
     }, [page, pageSize, initialRecords]);
 
-    /*****************************
-     * items 
-     */
+    // ==============================
+    // HANDLE DATA DARI API
+    // ==============================
 
     useEffect(() => {
         if (data?.data) {
             const mappedItems = data.data.map((d: any, index: number) => {
-                // Buat objek berdasarkan kolom yang telah didefinisikan
+                // Inisialisasi objek kosong per item
                 let mappedObject: { [key: string]: any } = {
                     id: d.id,
                 };
 
+                // Mapping setiap kolom
                 cols.forEach(col => {
                     if (col.accessor === 'created_at') {
+                        // Format tanggal ke format Indonesia
                         mappedObject[col.accessor] = new Intl.DateTimeFormat('id-ID', {
                             year: 'numeric',
                             month: '2-digit',
@@ -173,12 +213,15 @@ const StoresList = () => {
                             timeZone: 'Asia/Jakarta',
                         }).format(new Date(d[col.accessor]));
                     } else if (col.accessor === 'no') {
-                       mappedObject[col.accessor] = (index + 1) + ((page - 1) * pageSize)
+                        // Nomor urutan global, bukan hanya per halaman
+                        mappedObject[col.accessor] = (index + 1) + ((page - 1) * pageSize)
                     } else if (col.accessor === 'photo') {
+                        // Tampilkan foto jika ada, jika tidak tampilkan placeholder
                         mappedObject[col.accessor] =  d.photo 
                             ? `${import.meta.env.VITE_SERVER_URI_BASE}storage/${entity}/${d.photo}` 
                             : '/assets/images/blank_product.png' 
                     } else {
+                        // Data biasa langsung dari API
                         mappedObject[col.accessor] = d[col.accessor];
                     }
                 });
@@ -186,10 +229,12 @@ const StoresList = () => {
                 return mappedObject;
             });
 
+            // Set hasil mapping ke state
             setItems(mappedItems);
             setTotal(data.total);
         }
     }, [data, page, pageSize]);
+
 
     // Mengatur judul halaman
     useEffect(() => {
@@ -222,15 +267,19 @@ const StoresList = () => {
 
     return (
         <div>
+            {/* Header dengan judul entity dan tombol aksi */}
             <div className="flex items-center justify-between flex-wrap gap-4 mb-5">
+                {/* Judul berdasarkan entity di URL */}
                 <h2 className="text-xl">{capitalizeFirstLetter(entity)}</h2>
                 <div className="flex sm:flex-row flex-col sm:items-center sm:gap-3 gap-4 w-full sm:w-auto">
                     <div className="relative">
                         <div className="flex items-center gap-2">
+                            {/* Tombol untuk nonaktifkan data terpilih */}
                             <button type="button" className="btn btn-danger gap-2" onClick={() => deleteRow()}>
                                 <IconTrashLines />
                                 Nonactive 
                             </button>
+                            {/* Tombol untuk menambahkan data baru */}
                             <Link to={`/${entity}/create`} className="btn btn-primary gap-2">
                                 <IconPlus />
                                 Add New
@@ -239,10 +288,16 @@ const StoresList = () => {
                     </div>
                 </div>
             </div>
+
+            {/* Panel utama untuk tabel */}
             <div className="panel px-0 border-white-light dark:border-[#1b2e4b]">
                 <div className="invoice-table">
+
+                    {/* Filter, search, dan kolom tersembunyi */}
                     <div className="mb-4.5 px-5 flex md:items-center md:flex-row flex-col gap-5">
                         <div className="flex md:items-center md:flex-row flex-col gap-5">
+
+                            {/* Dropdown untuk mengatur kolom yang ditampilkan */}
                             <div className="dropdown">
                                 <Dropdown
                                     placement={`${isRtl ? 'bottom-end' : 'bottom-start'}`}
@@ -255,11 +310,12 @@ const StoresList = () => {
                                     }
                                 >
                                     <ul className="!min-w-[140px]">
+                                        {/* Tampilkan daftar kolom kecuali "slug" dan "photo" */}
                                         {cols
                                             .filter(col => 
                                                 col.accessor !== "slug" && 
                                                 col.accessor !== "photo"
-                                            ) // Hilangkan "Photo" 
+                                            )
                                             .map((col, i) => {
                                             return (
                                                 <li
@@ -271,6 +327,7 @@ const StoresList = () => {
                                                 >
                                                     <div className="flex items-center px-4 py-1">
                                                         <label className="cursor-pointer mb-0">
+                                                            {/* Checkbox untuk menyembunyikan/menampilkan kolom */}
                                                             <input
                                                                 type="checkbox"
                                                                 checked={!hideCols.includes(col.accessor)}
@@ -292,7 +349,7 @@ const StoresList = () => {
                             </div>
                         </div>
 
-                        {/* Dropdown Pilih Kolom + Input Filter */}
+                        {/* Dropdown untuk memilih kolom filter dan input untuk nilai filter */}
                         <div className="flex gap-3">
                             <select 
                                 value={selectedColumn} 
@@ -300,19 +357,21 @@ const StoresList = () => {
                                 className="form-select"
                             >
                                 <option value="">Column Filter</option>
+                                {/* Hanya tampilkan kolom yang bisa difilter */}
                                 {cols
                                     .filter(col => 
                                         col.accessor !== "no" && 
                                         col.accessor !== "photo" && 
                                         col.accessor !== "slug" && 
                                         col.accessor !== "created_at"
-                                    ) // Hilangkan "No" & "Created At"
+                                    )
                                     .map(col => (
                                         <option key={col.accessor} value={col.accessor}>{col.title}</option>
                                     ))
                                 }
                             </select>
 
+                            {/* Input teks untuk nilai filter */}
                             <input 
                                 type="text"
                                 value={filterValue}
@@ -322,19 +381,20 @@ const StoresList = () => {
                             />
                         </div>
 
+                        {/* Input pencarian data */}
                         <div className="ltr:ml-auto rtl:mr-auto">
                             <input type="text" className="form-input w-auto" placeholder="Search..." value={search} onChange={(e) => setSearch(e.target.value)} />
                         </div>
                     </div>
 
+                    {/* Komponen tabel utama */}
                     <div className="datatables pagination-padding">
                         <DataTable
                             className="whitespace-nowrap table-hover invoice-table"
-                            records={records}
+                            records={records} // Data yang akan ditampilkan di tabel
                             columns={[
                                 {
                                     accessor: 'no',
-                                    // sortable: true,
                                     hidden: hideCols.includes('no'),
                                 },
                                 {
@@ -352,6 +412,7 @@ const StoresList = () => {
                                                     />
                                                 </div>
                                                 <div>
+                                                    {/* Tautan ke detail entity berdasarkan slug */}
                                                     <a
                                                         href={`/${entity}/${slug}`}
                                                         className="hover:underline"
@@ -394,16 +455,16 @@ const StoresList = () => {
                                     hidden: hideCols.includes('created_at'),
                                 },
                             ]}
-                            highlightOnHover
-                            totalRecords={total}
-                            recordsPerPage={pageSize}
-                            page={page}
-                            onPageChange={(p) => setPage(p)}
-                            sortStatus={sortStatus}
-                            onSortStatusChange={setSortStatus}
-                            selectedRecords={selectedRecords}
-                            onSelectedRecordsChange={setSelectedRecords}
-                            paginationText={({ from, to, totalRecords }) => `Showing  ${from} to ${to} of ${totalRecords} entries`}
+                            highlightOnHover // Highlight baris saat di-hover
+                            totalRecords={total} // Total data untuk pagination
+                            recordsPerPage={pageSize} // Jumlah data per halaman
+                            page={page} // Halaman aktif
+                            onPageChange={(p) => setPage(p)} // Fungsi saat pindah halaman
+                            sortStatus={sortStatus} // Status urutan
+                            onSortStatusChange={setSortStatus} // Fungsi ubah urutan
+                            selectedRecords={selectedRecords} // Data yang sedang dipilih
+                            onSelectedRecordsChange={setSelectedRecords} // Fungsi saat memilih data
+                            paginationText={({ from, to, totalRecords }) => `Showing  ${from} to ${to} of ${totalRecords} entries`} // Teks pagination
                         />
                     </div>
                 </div>

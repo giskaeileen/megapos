@@ -11,8 +11,11 @@ import { useGetSingleRolesQuery, useStoreRolesMutation, useUpdateRolesMutation }
 const RolesForm= () => {
     const navigate = useNavigate();
     const { id } = useParams();  
+    // Ambil data role berdasarkan ID jika mode edit
     const { data } = useGetSingleRolesQuery(id, { skip: !id });  // Menarik data jika ID ada
+    // Hook untuk update role
     const [updateRoles, { isSuccess: isUpdateSuccess, error: errorUpdate }] = useUpdateRolesMutation();
+    // Hook untuk menyimpan role baru
     const [storeRoles, {
         data: dataStore, 
         error: errorStore, 
@@ -23,9 +26,9 @@ const RolesForm= () => {
      * tools 
      */
 
-    const location = useLocation();
+    const location = useLocation(); // Ambil path lokasi saat ini
     const pathnames = location.pathname.split('/').filter((x) => x);
-    const entity = pathnames[0];
+    const entity = pathnames[0]; // Ambil nama entity dari path, misalnya "roles"
 
     const dispatch = useDispatch();
 
@@ -33,6 +36,7 @@ const RolesForm= () => {
         dispatch(setPageTitle('File Upload Preview'));
     });
 
+    // Fungsi utilitas untuk mengkapitalisasi huruf pertama
     function capitalizeFirstLetter(str: string): string {
         return str.charAt(0).toUpperCase() + str.slice(1);
     }
@@ -53,19 +57,22 @@ const RolesForm= () => {
 
     // Menangani formik
     const formik = useFormik({
-        enableReinitialize: true,
+        enableReinitialize: true, // Biar formik update state saat data berubah
         initialValues: {
-            name: data?.name || '',
+            name: data?.name || '', // Isi nama jika ada (edit), atau kosong (create)
         },
-        validationSchema: schema,
+        validationSchema: schema, // Atur validasi berdasarkan schema Yup
         onSubmit: async (values) => {
+            // Buat FormData untuk dikirim via API
             const formData = new FormData();
             formData.append("name", values.name);
 
             if (id) {
+                // Kalau ada ID berarti edit
                 formData.append("_method", "PUT");
-                await updateRoles({id, data: formData});
+                await updateRoles({id, data: formData}); // Kirim ke API update
             } else {
+                // Kalau tidak ada ID berarti create
                 await storeRoles(formData);
             }
         }
@@ -109,6 +116,7 @@ const RolesForm= () => {
                     </div>
                 </div>
             </div>
+            {/* Form input */}
             <div className="grid lg:grid-cols-6 grid-cols-1 gap-6">
                 <div className="grid lg:grid-cols-1 grid-cols-1 gap-6 col-span-1 lg:col-span-4">
                     {/* Grid */}
@@ -128,6 +136,7 @@ const RolesForm= () => {
                                                 handleChange(e); // Tetap gunakan handleChange dari Formik
                                             }}
                                         />
+                                        {/* Menampilkan pesan error validasi */}
                                         {errors.name && touched.name && typeof errors.name === 'string' && (
                                             <span className="text-red-500 block mt-2">{errors.name}</span>
                                         )}

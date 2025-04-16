@@ -24,20 +24,21 @@ const ProductsForm = () => {
 
     const location = useLocation();
     const pathnames = location.pathname.split('/').filter((x) => x);
-    const storeId = pathnames[0];
-    const entity = pathnames[1];
+    const storeId = pathnames[0]; // Mengambil storeId dari path URL
+    const entity = pathnames[1]; // Mengambil nama entitas dari path URL
 
     const dispatch = useDispatch();
 
+    // Set judul halaman saat komponen dimount
     useEffect(() => {
         dispatch(setPageTitle('File Upload Preview'));
     });
 
+    // Kapitalisasi huruf pertama
     function capitalizeFirstLetter(str: string): string {
         return str.charAt(0).toUpperCase() + str.slice(1);
     }
 
-    // date
     const isRtl = useSelector((state: IRootState) => state.themeConfig.rtlClass) === 'rtl' ? true : false;
 
     /*****************************
@@ -45,10 +46,13 @@ const ProductsForm = () => {
      */
 
     const navigate = useNavigate();
-    const { id } = useParams();
+    const { id } = useParams(); // Mengambil ID produk dari URL jika ada
+    // Fetch data produk jika ID tersedia
     const { data } = useGetSingleProductQuery({ storeId, id }, { skip: !id }); // Menarik data jika ID ada
+    // Mutation hooks untuk update dan store produk
     const [updateProduct, { isSuccess: isUpdateSuccess, error: errorUpdate }] = useUpdateProductMutation();
     const [storeProduct, { data: dataStore, error: errorStore, isSuccess: isSuccessStore }] = useStoreProductMutation();
+    // Fetch data referensi
     const { data: categories } = useGetCategoriesQuery({ storeId: storeId });
     const { data: suppliers } = useGetSuppliersQuery({ storeId: storeId });
     const { data: dataAttributes } = useGetAttributesQuery({ storeId: storeId });
@@ -57,18 +61,18 @@ const ProductsForm = () => {
      * validation
      */
 
+    // Validasi form masih kosong (belum diterapkan schema Yup)
     const schema = Yup.object().shape({});
 
     /*****************************
      * form data
      */
 
-    console.log(data)
+    console.log(data) // Tampilkan data produk yang didapatkan
 
     // Menangani formik
     const formik = useFormik({
         enableReinitialize: true,
-        // values
         initialValues: {
             product_name: data?.product_name || '',
             category_id: data?.category_id || '',
@@ -86,14 +90,6 @@ const ProductsForm = () => {
                     price: variation.price,
                     sale_price: variation.sale_price,
                     quantity: variation.quantity,
-                    // images: variation.product_image
-                    //     ? [
-                    //           {
-                    //               dataURL: `${import.meta.env.VITE_SERVER_URI_BASE}storage/products/${variation.product_image}`,
-                    //               file: null,
-                    //           },
-                    //       ]
-                    //     : [],
                     images: variation.product_image
                         ? [
                             {
@@ -112,6 +108,7 @@ const ProductsForm = () => {
         },
         validationSchema: schema,
         onSubmit: async (values) => {
+            // Siapkan FormData untuk dikirim ke backend
             const formData = new FormData();
             formData.append('product_name', values.product_name);
             formData.append('category_id', values.category_id);
@@ -162,6 +159,7 @@ const ProductsForm = () => {
                 console.log(`${pair[0]}: ${pair[1]}`);
             }
 
+            // Kirim data ke backend
             if (id) {
                 formData.append('_method', 'PUT');
                 await updateProduct({ storeId: storeId, id, data: formData });
@@ -208,15 +206,14 @@ const ProductsForm = () => {
         }
         if (errorUpdate) {
             const errorData = errorStore as any;
-            // toast.error(errorData.data.message);
             toast.error(errorData);
         }
     }, [isSuccessStore, isUpdateSuccess, errorStore, errorUpdate]);
 
     // ======== attribute
 
-    // const [attributes, setAttributes] = useState([{ attribute: '', value: [] }]);
 
+    // Mengambil daftar nama atribut untuk dropdown
     interface AttributeValue {
         value: string;
         label: string;
@@ -231,7 +228,7 @@ const ProductsForm = () => {
     // Tentukan tipe state secara eksplisit
     const [attributes, setAttributes] = useState<Attribute[]>([]);
 
-    // Fungsi untuk mendapatkan nama atribut
+    // Mengambil daftar nama atribut untuk dropdown
     const getAttributeOptions = () => {
         return (
             dataAttributes?.data.map((attr: any) => ({
@@ -254,13 +251,7 @@ const ProductsForm = () => {
         );
     };
 
-    // // Fungsi untuk menangani perubahan
-    // const handleChange2 = (index: number, field: string, value: any) => {
-    //     const updatedAttributes = [...attributes];
-    //     updatedAttributes[index][field] = value;
-    //     setAttributes(updatedAttributes);
-    // };
-
+    // Menangani perubahan atribut
     const handleChange2 = (index: number, field: string, value: any) => {
         const updatedAttributes = [...attributes];
 
@@ -271,14 +262,17 @@ const ProductsForm = () => {
         setAttributes(updatedAttributes);
     };
 
+    // Tambah baris atribut
     const handleAddRow = () => {
         setAttributes([...attributes, { attribute: '', value: [] }]);
     };
 
+    // Hapus baris atribut berdasarkan index
     const handleRemoveRow = (index: number) => {
         setAttributes(attributes.filter((_, i) => i !== index));
     };
 
+    // Proses atribut varian saat data produk tersedia
     useEffect(() => {
         if (data && data.product_variants) {
             // Proses data untuk membentuk struktur attributes
@@ -317,7 +311,13 @@ const ProductsForm = () => {
         }
     }, [data]);
 
+    // Generate Variants Saat Attribute Berubah
     useEffect(() => {
+        /**
+         * Fungsi rekursif untuk menghasilkan semua kombinasi dari array 2 dimensi
+         * Contoh:
+         * [['Merah', 'Biru'], ['S', 'M']] => [['Merah', 'S'], ['Merah', 'M'], ['Biru', 'S'], ['Biru', 'M']]
+         */
         const allCombinations = (values: any[][]): any[] => {
             if (values.length === 0) return [[]];
             const first = values[0];
@@ -325,6 +325,7 @@ const ProductsForm = () => {
             return first.flatMap((value) => rest.map((comb) => [value, ...comb]));
         };
 
+        // Ambil semua nilai attribute yang terpilih dan ubah ke bentuk yang dibutuhkan untuk kombinasi
         const attributeValues = attributes
             .filter((attr: any) => attr.value.length > 0)
             .map((attr: any) =>
@@ -335,8 +336,10 @@ const ProductsForm = () => {
                 }))
             );
 
+        // Hasilkan semua kombinasi dari atribut yang tersedia
         const combinations = allCombinations(attributeValues);
 
+        // Buat varian berdasarkan kombinasi dengan format awal kosong untuk price, quantity, dll.
         const generatedVariants = combinations.map((comb) => ({
             variant: comb.map((item: any) => item.value).join(' / '),
             attributes: comb.map((item: any) => ({
@@ -351,31 +354,38 @@ const ProductsForm = () => {
             images: [],
         }));
 
+         /**
+         * Gabungkan data varian baru dengan data varian sebelumnya (jika ada)
+         * Supaya user tidak kehilangan data yang sudah dia input seperti harga, SKU, dll.
+         */
+
         // Update variants hanya yang cocok dengan data yang ada
         const updatedVariants = generatedVariants.map((newVariant, index) => {
             // Hanya update dua item pertama atau semua jika exitingVariants lebih sedikit
             if (index < formik.values.variants.length) {
                 return {
-                    ...formik.values.variants[index], // Keep the existing data for the rest
+                    ...formik.values.variants[index], // Pertahankan data lama (misal: price, sku)
                     variant: newVariant.variant,
                     attributes: newVariant.attributes,
                 };
             } else {
                 // Jika generatedVariants lebih banyak, tetap gunakan data baru untuk sisa array
                 return {
-                    ...newVariant, // set new variant for the remaining items
+                    ...newVariant, // Untuk varian yang baru saja ditambahkan
                 };
             }
         });
 
-        // Set all variants, regardless of size difference
+        // Update field varian di formik
         formik.setFieldValue('variants', updatedVariants);
     }, [attributes]);
 
+    // Fungsi Untuk Menangani Perubahan Nilai Varian Secara Dinamis
     const handleVariantChange = (index: number, field: string, value: any, attributeId?: string) => {
         const updatedVariants = [...formik.values.variants];
 
         if (field === 'attributes') {
+            // Tangani perubahan khusus pada nilai atribut
             const existingAttributes = updatedVariants[index].attributes || [];
             const attributeIndex = existingAttributes.findIndex((attr: any) => attr.attributeId === attributeId);
 
@@ -393,6 +403,7 @@ const ProductsForm = () => {
 
             updatedVariants[index].attributes = existingAttributes;
         } else {
+            // Update field umum seperti price, sku, quantity
             updatedVariants[index][field] = value;
         }
 
@@ -401,14 +412,15 @@ const ProductsForm = () => {
 
     // ===============
     // varians
+    // Pengelolaan Checkbox 
 
-    const [isVariant, setIsVariant] = useState(false); // State untuk checkbox
-    // const [isVariant, setIsVariant] = useState(formik.values.variants.length > 1); // State untuk checkbox
+    const [isVariant, setIsVariant] = useState(false); // State untuk menyimpan apakah produk punya banyak varian
 
     const handleCheckboxVariantChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         setIsVariant(event.target.checked); // Perbarui state berdasarkan status checkbox
     };
 
+     // Cek apakah produk yang sedang di-edit punya lebih dari satu varian
     useEffect(() => {
         if (data && data.product_variants.length > 1) {
             setIsVariant(true);
@@ -421,12 +433,17 @@ const ProductsForm = () => {
     // validation 
 
     return (
+        // Form 
         <form onSubmit={handleSubmit}>
+            {/* Header judul halaman + tombol simpan */}
             <div className="flex items-center justify-between flex-wrap gap-4 mb-5">
+                {/* Menampilkan nama entitas dengan huruf pertama kapital */}
                 <h2 className="text-xl">{capitalizeFirstLetter(entity)}</h2>
+                {/* button Submit / Simpan */}
                 <div className="flex sm:flex-row flex-col sm:items-center sm:gap-3 gap-4 w-full sm:w-auto">
                     <div className="relative">
                         <div className="flex items-center gap-2">
+                            {/* Tombol untuk menyimpan form */}
                             <button type="submit" className="btn btn-primary">
                                 Save
                             </button>
@@ -435,41 +452,53 @@ const ProductsForm = () => {
                 </div>
             </div>
 
+            {/* Grid layout gambar produk + detail produk */}
             <div className="grid lg:grid-cols-6 grid-cols-1 gap-6">
+                {/* Kolom kiri panel untuk upload gambar produk */}
                 <div className="col-span-1 lg:col-span-2">
                     <div className="panel" id="single_file">
+                        {/* Komponen upload gambar produk */}
                         <ProductImage setImages={setImages} formik={formik} images={images} />
                     </div>
                 </div>
 
+                {/* Kolom kanan: detail produk, atribut, dan varian */}
                 <div className="grid lg:grid-cols-1 grid-cols-1 gap-6 col-span-1 lg:col-span-4">
+                    {/* Komponen informasi umum produk */}
                     <ProductInformation
-                        values={values}
-                        handleChange={handleChange}
-                        errors={errors}
-                        touched={touched}
-                        categories={categories}
-                        suppliers={suppliers}
-                        isRtl={isRtl}
-                        formik={formik}
-                        isVariant={isVariant}
-                        handleCheckboxVariantChange={handleCheckboxVariantChange}
+                        values={values} // Nilai input form
+                        handleChange={handleChange} // Handler untuk perubahan input
+                        errors={errors} // Validasi error
+                        touched={touched} // Validasi yang sudah disentuh
+                        categories={categories} // Data kategori dari server
+                        suppliers={suppliers} // Data supplier dari server
+                        isRtl={isRtl} // Layout RTL (kanan ke kiri)
+                        formik={formik} // Objek formik penuh
+                        isVariant={isVariant} // Apakah produk punya varian
+                        handleCheckboxVariantChange={handleCheckboxVariantChange} // Fungsi untuk toggle checkbox varian
                     />
 
+                    {/* Jika produk memiliki varian, tampilkan bagian atribut */}
                     {isVariant && (
                         <ProductAttribute
-                            attributes={attributes}
-                            setAttributes={setAttributes}
-                            handleRemoveRow={handleRemoveRow}
-                            handleChange2={handleChange2}
-                            getOptions={getOptions}
-                            handleAddRow={handleAddRow}
-                            dataAttributes={dataAttributes}
-                            data={data}
+                            attributes={attributes} // Data atribut yang dipilih
+                            setAttributes={setAttributes} // Setter untuk atribut
+                            handleRemoveRow={handleRemoveRow} // Hapus baris atribut
+                            handleChange2={handleChange2} // Perubahan nilai atribut
+                            getOptions={getOptions} // Fungsi untuk ambil pilihan atribut
+                            handleAddRow={handleAddRow}  // Tambah baris atribut
+                            dataAttributes={dataAttributes} // Data atribut dari server
+                            data={data} // Data produk yang sedang diedit (jika ada)
                         />
                     )}
 
-                    <ProductVariant handleVariantChange={handleVariantChange} formik={formik} isVariant={isVariant} data={data} />
+                    {/* Bagian untuk menampilkan varian produk */}
+                    <ProductVariant
+                        handleVariantChange={handleVariantChange} // Fungsi untuk mengubah nilai pada varian
+                        formik={formik} // Objek formik penuh
+                        isVariant={isVariant} // Kondisi apakah produk menggunakan varian
+                        data={data} // Data produk untuk pengisian awal
+                    />
                 </div>
             </div>
         </form>

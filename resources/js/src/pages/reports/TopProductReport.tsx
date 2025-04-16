@@ -31,14 +31,16 @@ const TopProductReport = () => {
     const entityRangeDate = `${entity}_range_date`; 
     const entityRangePrice = `${entity}_range_price`; 
 
-    // state 
+    // Menyimpan halaman aktif (default: 1)
     const [page, setPage] = useState<number>(() => {
         const storedPage = localStorage.getItem(entityPage);
         return storedPage ? parseInt(storedPage, 10) : 1; // Konversi ke number, default ke 1
     });
+    // Menyimpan teks pencarian
     const [search, setSearch] = useState(() => {
         return localStorage.getItem(`${entity}_search`) || '';
     });
+    // Menyimpan status sorting (kolom dan arah sort)
     const [sortStatus, setSortStatus] = useState<DataTableSortStatus>(() => {
         const storedSort = localStorage.getItem(`${entitySort}`);
         return storedSort
@@ -46,11 +48,15 @@ const TopProductReport = () => {
             : { columnAccessor: 'created_at', direction: 'desc' }; 
     });
     const dispatch = useDispatch();
+    // Data yang ditampilkan dalam tabel
     const [items, setItems] = useState<any[]>([]);
     const [total, setTotal] = useState();
     const [deleteSupplier] = useDeleteSuppliersMutation();
+     // Kolom yang disembunyikan (untuk toggle visibility)
     const [hideCols, setHideCols] = useState<string[]>([]);
+    // RTL state untuk dukungan bahasa RTL
     const isRtl = useSelector((state: IRootState) => state.themeConfig.rtlClass) === 'rtl' ? true : false;
+    // Filter kolom dan nilainya
     const [selectedColumn, setSelectedColumn] = useState<string>(() => {
         return localStorage.getItem(`${entity}_filter_column`) || '';
     }); // Kolom yang difilter
@@ -58,6 +64,7 @@ const TopProductReport = () => {
         return localStorage.getItem(`${entity}_filter_value`) || '';
     }); // nilai filter
 
+    // Filter berdasarkan tanggal
     const [selectedDateFilter, setSelectedDateFilter] = useState(
         localStorage.getItem(entitySelectedDateFilter) || "daily"
     );
@@ -68,15 +75,17 @@ const TopProductReport = () => {
         JSON.parse(localStorage.getItem(entityRangeDate) ?? "{}") || { start: "", end: "" }
     );
 
+    // Filter berdasarkan harga
     const [rangePrice, setRangePrice] = useState(
         JSON.parse(localStorage.getItem(entityRangePrice) ?? "{}") || { min: "", max: "" }
     );
 
+    // Reset nilai filter tanggal ketika filter dipilih ulang
     useEffect(() => {
         setFilterDateValue("")
     }, [selectedDateFilter])
 
-    // data 
+    // data  dari API berdasarkan filter
     const { data, refetch } = useGetTopProductQuery(
         { 
             storeId, 
@@ -95,6 +104,7 @@ const TopProductReport = () => {
         },
         { refetchOnMountOrArgChange: true } 
     );
+    // Definisi kolom tabel
     const cols = [
         { accessor: 'no', title: 'No' },
         { accessor: 'product_name', title: 'Product Name' },
@@ -257,48 +267,52 @@ const TopProductReport = () => {
     const [fetchTopProductTrigger] = useLazyGetTopProductQuery(); // Gunakan Lazy Query
 
 
+    // Fungsi untuk ambil semua data produk (multi-page) dari backend secara looping (pagination)
     const fetchAllOrders = async (params: any, fetchOrders: any) => {
-        let allOrders: any[] = [];
-        let currentPage = 1;
-        let lastPage = 1;
+        let allOrders: any[] = []; // Tempat nyimpan hasil semua data
+        let currentPage = 1; // Mulai dari halaman pertama
+        let lastPage = 1;  // Default total halaman
 
         try {
             while (currentPage <= lastPage) {
-                // const result = await fetchOrders({ ...params, page: currentPage }).unwrap();
+                // Panggil endpoint dengan pagination
                 const result = await fetchTopProductTrigger({ ...params, page: currentPage }).unwrap();
 
-                // console.log(result)
-
+                // Tambahkan data yang didapat ke array hasil
                 allOrders = [...allOrders, ...result.data];
                 lastPage = result.last_page; // Total halaman yang tersedia
+                // Lanjut ke halaman berikutnya
                 currentPage++;
             }
         } catch (error) {
+            // Tangkap error kalau ada masalah saat ambil data
             console.error("Error fetching all orders:", error);
         }
 
-        return allOrders;
+        return allOrders; // Return semua data yang udah dikumpulkan
     };
 
     const fetchOrders = refetch;
 
+    // State untuk simpan semua data produk
     const [allOrders, setAllOrders] = useState<any[]>([]);
 
+    // Fungsi untuk ambil semua data produk dari API dan simpan ke `allOrders`
     const fetchOrdersData = async () => {
         const orders = await fetchAllOrders(
             { 
-                storeId, 
-                search,
-                sort: sortStatus.columnAccessor,
-                direction: sortStatus.direction,
-                filterColumn: selectedColumn,  
-                filterValue,    
-                selectedDateFilter,
-                filterDateValue,
-                rangeDateStart: rangeDate.start,
-                rangeDateEnd: rangeDate.end,
-                rangePriceMin: rangePrice.min,
-                rangePriceMax: rangePrice.max,
+                storeId, // ID toko
+                search, // Keyword pencarian
+                sort: sortStatus.columnAccessor, // Kolom sorting
+                direction: sortStatus.direction, // Arah sorting (asc/desc)
+                filterColumn: selectedColumn, // Nama kolom filter (jika ada)
+                filterValue, // Nilai filter
+                selectedDateFilter, // Tipe filter tanggal (daily/monthly/etc)
+                filterDateValue, // Nilai spesifik filter tanggal
+                rangeDateStart: rangeDate.start, // Tanggal mulai
+                rangeDateEnd: rangeDate.end, // Tanggal akhir
+                rangePriceMin: rangePrice.min, // Harga minimal
+                rangePriceMax: rangePrice.max, // Harga maksimal
             },
             fetchOrders // Inject RTK Query
         );
@@ -309,10 +323,9 @@ const TopProductReport = () => {
         fetchOrdersData();
     }, [data]);
 
-    // console.log(allOrders)
 
+    // Fungsi handle export data dalam berbagai format (PDF, XLSX, CSV)
     const handleExport = async (type: any) => {
-        // await fetchOrdersData(); // Ambil data terbaru sebelum ekspor
 
         const filters = {
             selectedDateFilter,
@@ -325,9 +338,9 @@ const TopProductReport = () => {
             rangePriceMax: rangePrice.max,
         };
 
+        // Filter kolom yang lagi ditampilkan (hideCols = disembunyikan)
         const visibleCols = cols.filter(col=> !hideCols.includes(col.accessor));
 
-        // exportPDF(allOrders, cols, filters, capitalizeFirstLetter(storeId), capitalizeFirstLetter(entity));
         if (type === "pdf") {
             exportPDF(allOrders, visibleCols, filters, capitalizeFirstLetter(storeId), capitalizeFirstLetter(entity));
         } else if (type === "xlsx") {
@@ -337,23 +350,24 @@ const TopProductReport = () => {
         }
     };
 
+    // Fungsi bantu buat ngehitung total nilai dari suatu kolom tertentu
     const getTotal = (key: any) => {
         return records.reduce((sum, row) => sum + (parseFloat(row[key]) || 0), 0);
     };
 
     return (
         <div>
+            {/* Header Section */}
             <div className="flex items-center justify-between flex-wrap gap-4 mb-5">
+                {/* Judul halaman / entity (misalnya: Products, Orders, dst) */}
                 <h2 className="text-xl">{capitalizeFirstLetter(entity)}</h2>
             </div>
 
             {/* statistik */}
-            {/* <ChartReportTopProduct allOrders={allOrders} /> */}
 
-            {/* Total Summary */}
+            {/* Ringkasan Total */}
             <div className="panel p-4 mt-4 mb-4 rounded-md">
                 <h3 className="text-lg font-semibold text-gray-700 mb-2">Total Summary</h3>
-                {/* <table className="w-full border-collapse text-sm bg-white rounded-md"> */}
                 <table className="table-responsive">
                     <thead>
                         <tr>
@@ -364,18 +378,20 @@ const TopProductReport = () => {
                     <tbody>
                         <tr>
                             <td>Total</td>
+                            {/* Menampilkan total semua produk terjual, pakai toLocaleString biar format angka rapi */}
                             <td>{getTotal("total_sold").toLocaleString()}</td>
                         </tr>
                     </tbody>
                 </table>
             </div>
 
+            {/* Table Section */}
             <div className="panel px-0 border-white-light dark:border-[#1b2e4b]">
                 <div className="invoice-table">
                     <div className="mb-4.5 px-5 flex flex-col gap-3">
                         {/* Baris Pertama */}
                         <div className="grid grid-cols-1 md:grid-cols-6 gap-3 content-between">
-                            {/* Dropdown Columns */}
+                            {/* Dropdown Pilih kolom yang ditampilkan */}
                             <div className="dropdown w-full">
                                 <Dropdown
                                     placement={`${isRtl ? 'bottom-end' : 'bottom-start'}`}
@@ -415,7 +431,7 @@ const TopProductReport = () => {
                                 </Dropdown>
                             </div>
 
-                            {/* Select Daily, Monthly, Yearly */}
+                            {/* Filter berdasarkan waktu (daily/monthly/yearly) */}
                             <select
                                 value={selectedDateFilter}
                                 onChange={(e) => setSelectedDateFilter(e.target.value)}
@@ -426,7 +442,7 @@ const TopProductReport = () => {
                                 <option value="yearly">Yearly</option>
                             </select>
 
-                            {/* Inputan Berdasarkan Pilihan */}
+                            {/* Input tanggal berdasarkan filter yang dipilih */}
                             {selectedDateFilter === "daily" && (
                                 <input
                                     type="date"
@@ -457,9 +473,11 @@ const TopProductReport = () => {
                                 />
                             )}
 
+                            {/* Tombol Export & Search */}
                             <div className="md:col-span-3 flex gap-3 w-full">
                                 <div className="flex gap-1 justify-end w-full">
                                     <div className="flex gap-1 justify-end w-full">
+                                        {/* button Export CSV, XLSX, PDF */}
                                         <button type="button" className="btn btn-primary btn-sm m-1" onClick={() => handleExport("csv")}>
                                             CSV
                                         </button>
@@ -472,6 +490,7 @@ const TopProductReport = () => {
                                     </div>
                                 </div>
 
+                                {/* Input search keyword */}
                                 <input 
                                     type="text" 
                                     className="form-input w-full" 
@@ -482,7 +501,7 @@ const TopProductReport = () => {
                             </div>
                         </div>
 
-                        {/* Baris Kedua */}
+                        {/* Baris Kedua kolom, tanggal, harga */}
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                             {/* Filter Kolom */}
                             <div className="flex gap-3 w-full">
@@ -508,7 +527,7 @@ const TopProductReport = () => {
                                 />
                             </div>
 
-                            {/* Range Date */}
+                            {/* Filter Berdasarkan Rentang Tanggal */}
                             <div className="flex gap-3 w-full">
                                 <input 
                                     type="date"
@@ -526,7 +545,7 @@ const TopProductReport = () => {
                                 />
                             </div>
 
-                            {/* Range Price */}
+                            {/* Filter Berdasarkan Rentang Jumlah Terjual (Harga) */}
                             <div className="flex gap-3 w-full">
                                 <input 
                                     type="number"
@@ -546,14 +565,15 @@ const TopProductReport = () => {
                         </div>
                     </div>
 
+                    {/* DataTable */}
                     <div className="datatables pagination-padding">
                         <DataTable
                             className="whitespace-nowrap table-hover invoice-table"
-                            records={records}
+                            records={records} // Data yang ditampilkan
                             columns={[
+                                // Konfigurasi kolom
                                 {
                                     accessor: 'no',
-                                    // sortable: true,
                                     hidden: hideCols.includes('no'),
                                 },
                                 {
@@ -602,14 +622,14 @@ const TopProductReport = () => {
                                     hidden: hideCols.includes('discount_member'),
                                 },
                             ]}
-                            highlightOnHover
-                            totalRecords={total}
-                            recordsPerPage={pageSize}
-                            page={page}
-                            onPageChange={(p) => setPage(p)}
-                            sortStatus={sortStatus}
-                            onSortStatusChange={setSortStatus}
-                            paginationText={({ from, to, totalRecords }) => `Showing  ${from} to ${to} of ${totalRecords} entries`}
+                            highlightOnHover // Efek hover saat mouse di atas baris
+                            totalRecords={total} // Total semua data (untuk pagination)
+                            recordsPerPage={pageSize} // Jumlah data per halaman
+                            page={page} // Halaman aktif
+                            onPageChange={(p) => setPage(p)} // Saat pindah halaman
+                            sortStatus={sortStatus} // Urutan sort
+                            onSortStatusChange={setSortStatus} // update selected
+                            paginationText={({ from, to, totalRecords }) => `Showing  ${from} to ${to} of ${totalRecords} entries`} // teks pagination
                         />
                     </div>
                 </div>
